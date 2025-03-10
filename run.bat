@@ -1,0 +1,36 @@
+@echo off
+echo Running Media Organizer...
+
+:: Check if Python is installed
+python --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo Python is not installed or not in PATH. Please install Python 3 to run this application.
+    pause
+    exit /b 1
+)
+
+:: Check if virtual environment exists, create if not
+if not exist media_organizer_venv (
+    echo Creating virtual environment...
+    python -m venv media_organizer_venv
+)
+
+:: Activate virtual environment and install dependencies
+echo Activating virtual environment and installing dependencies...
+call media_organizer_venv\Scripts\activate.bat
+pip install -r requirements.txt
+
+:: Check if Tkinter is installed
+python -c "import tkinter" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo Tkinter is not installed. Please install it with your Python distribution.
+    pause
+    exit /b 1
+)
+
+:: Run the application
+python media_organizer.py
+
+:: Deactivate virtual environment
+call deactivate
+pause 
