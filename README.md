@@ -115,6 +115,40 @@ The application uses templates with placeholders to determine how files should b
 - Pillow
 - Tkinter (usually comes with Python)
 
+## Development
+
+### Code Style and Linting
+
+This project uses [Black](https://black.readthedocs.io/) for code formatting and [Flake8](https://flake8.pycqa.org/) for linting. To set up the development environment:
+
+1. Install the development dependencies:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. Run the linter and formatter manually:
+
+   ```bash
+   python -m black .
+   ```
+
+   Or to check without modifying files:
+
+   ```bash
+   python -m black --check .
+   ```
+
+### VSCode Setup
+
+This project includes VSCode configuration for automatic formatting with Black:
+
+1. Install the [Black Formatter](https://marketplace.visualstudio.com/items?itemName=ms-python.black-formatter) extension in VSCode
+2. The `.vscode/settings.json` file is already configured to:
+   - Use Black as the default formatter for Python files
+   - Format Python files automatically on save
+   - Use the line length specified in `pyproject.toml` (100 characters)
+
 ## License
 
 This project is open source and available under the MIT License.
