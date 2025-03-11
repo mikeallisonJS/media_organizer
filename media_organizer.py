@@ -972,33 +972,48 @@ class MediaOrganizerGUI:
 
         # Preview frame
         preview_frame = ttk.LabelFrame(
-            self.main_frame, text="Preview (Original → New Path)", padding=10
+            self.main_frame, text="Preview", padding=5
         )
-        preview_frame.pack(fill=tk.BOTH, expand=True, pady=5)
+        preview_frame.pack(fill=tk.BOTH, expand=True, pady=2)
 
-        # Preview list with scrollbar
+        # Preview table with scrollbars
         preview_container = ttk.Frame(preview_frame)
         preview_container.pack(fill=tk.BOTH, expand=True)
 
-        # Use a monospace font for better readability of paths
-        preview_font = ("Courier", 10)
-        self.preview_list = tk.Text(preview_container, height=8, wrap=tk.NONE, font=preview_font)
-        self.preview_list.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        # Create the treeview
+        self.preview_tree = ttk.Treeview(
+            preview_container,
+            columns=("source", "destination"),
+            show="headings",
+            selectmode="browse"
+        )
+        
+        # Define the columns
+        self.preview_tree.heading("source", text="Source Path")
+        self.preview_tree.heading("destination", text="Destination Path")
+        
+        # Configure column widths (both columns get equal width)
+        preview_container.update_idletasks()  # Ensure container has been drawn
+        width = preview_container.winfo_width()
+        self.preview_tree.column("source", width=width//2, stretch=True)
+        self.preview_tree.column("destination", width=width//2, stretch=True)
 
+        # Add scrollbars
         preview_scrollbar_y = ttk.Scrollbar(
-            preview_container, orient="vertical", command=self.preview_list.yview
+            preview_container, orient="vertical", command=self.preview_tree.yview
         )
         preview_scrollbar_y.pack(side=tk.RIGHT, fill=tk.Y)
 
         preview_scrollbar_x = ttk.Scrollbar(
-            preview_frame, orient="horizontal", command=self.preview_list.xview
+            preview_frame, orient="horizontal", command=self.preview_tree.xview
         )
         preview_scrollbar_x.pack(side=tk.BOTTOM, fill=tk.X)
 
-        self.preview_list.config(
-            yscrollcommand=preview_scrollbar_y.set, xscrollcommand=preview_scrollbar_x.set
+        self.preview_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.preview_tree.configure(
+            yscrollcommand=preview_scrollbar_y.set,
+            xscrollcommand=preview_scrollbar_x.set
         )
-        self.preview_list.configure(state="disabled")
 
         # Progress frame
         progress_frame = ttk.LabelFrame(self.main_frame, text="Progress", padding=5)
@@ -1064,9 +1079,8 @@ class MediaOrganizerGUI:
 
     def _clear_preview(self):
         """Clear the preview list."""
-        self.preview_list.configure(state="normal")
-        self.preview_list.delete(1.0, tk.END)
-        self.preview_list.configure(state="disabled")
+        for item in self.preview_tree.get_children():
+            self.preview_tree.delete(item)
 
     def _update_progress(self, processed, total, current_file):
         """Update the progress display."""
@@ -1176,14 +1190,6 @@ class MediaOrganizerGUI:
                         break
 
             # Generate preview for each file
-            self.preview_list.configure(state="normal")
-
-            # Add header
-            self.preview_list.insert(
-                tk.END, "Original File (relative to source) → New Path (relative to output)\n"
-            )
-            self.preview_list.insert(tk.END, "-" * 80 + "\n\n")
-
             for file_path in preview_files:
                 try:
                     # Extract metadata
@@ -1199,17 +1205,15 @@ class MediaOrganizerGUI:
                     try:
                         # Get relative path from source directory
                         original_rel_path = file_path.relative_to(source_path)
-
-                        # Format for display
-                        self.preview_list.insert(tk.END, f"{original_rel_path} → {rel_path}\n")
+                        
+                        # Insert into treeview
+                        self.preview_tree.insert("", "end", values=(str(original_rel_path), rel_path))
                     except ValueError:
                         # If file is not relative to source (shouldn't happen), show full path
-                        self.preview_list.insert(tk.END, f"{file_path} → {rel_path}\n")
+                        self.preview_tree.insert("", "end", values=(str(file_path), rel_path))
 
                 except Exception as e:
                     logger.error(f"Error generating preview for {file_path}: {e}")
-
-            self.preview_list.configure(state="disabled")
 
             if count == 0:
                 self.status_var.set("No media files found in the source directory.")
