@@ -631,6 +631,70 @@ class MediaOrganizer:
         self.stop_requested = True
 
 
+class LogWindow:
+    """Separate window for displaying logs."""
+    
+    def __init__(self, parent):
+        """Initialize the log window."""
+        self.window = tk.Toplevel(parent)
+        self.window.title("Media Organizer Logs")
+        self.window.geometry("600x400")
+        self.window.minsize(400, 300)
+        
+        # Configure the window to be hidden instead of destroyed when closed
+        self.window.protocol("WM_DELETE_WINDOW", self.hide)
+        
+        # Create the log text widget
+        self.log_text = tk.Text(self.window, wrap=tk.WORD)
+        self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # Add scrollbar
+        scrollbar = ttk.Scrollbar(self.window, command=self.log_text.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.log_text.config(yscrollcommand=scrollbar.set)
+        
+        # Configure logging to text widget
+        self._setup_text_logging()
+        
+        # Initially hide the window
+        self.hide()
+    
+    def _setup_text_logging(self):
+        """Set up logging to the text widget."""
+        class TextHandler(logging.Handler):
+            def __init__(self, text_widget):
+                logging.Handler.__init__(self)
+                self.text_widget = text_widget
+
+            def emit(self, record):
+                msg = self.format(record)
+
+                def append():
+                    self.text_widget.configure(state="normal")
+                    self.text_widget.insert(tk.END, msg + "\n")
+                    self.text_widget.see(tk.END)
+                    self.text_widget.configure(state="disabled")
+
+                # Schedule the append operation on the GUI thread
+                self.text_widget.after(0, append)
+
+        text_handler = TextHandler(self.log_text)
+        text_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+        logger.addHandler(text_handler)
+
+        # Disable editing
+        self.log_text.configure(state="disabled")
+    
+    def show(self):
+        """Show the log window."""
+        self.window.deiconify()
+        self.window.lift()
+    
+    def hide(self):
+        """Hide the log window."""
+        self.window.withdraw()
+
+
 class MediaOrganizerGUI:
     """GUI for the Media Organizer application."""
 
@@ -638,8 +702,11 @@ class MediaOrganizerGUI:
         """Initialize the GUI."""
         self.root = root
         self.root.title("Media Organizer")
-        self.root.geometry("800x700")  # Increased height to accommodate extension checkboxes
+        self.root.geometry("800x700")
         self.root.minsize(800, 700)
+
+        # Create menubar
+        self._create_menubar()
 
         # Set up the organizer
         self.organizer = MediaOrganizer()
@@ -660,6 +727,9 @@ class MediaOrganizerGUI:
         # Create the widgets
         self._create_widgets()
 
+        # Create log window
+        self.log_window = LogWindow(self.root)
+
         # Load saved settings
         self._load_settings()
 
@@ -668,6 +738,23 @@ class MediaOrganizerGUI:
 
         # Log startup
         logger.info("Media Organizer started")
+
+    def _create_menubar(self):
+        """Create the menubar."""
+        menubar = tk.Menu(self.root)
+        self.root.config(menu=menubar)
+
+        # View menu
+        view_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="View", menu=view_menu)
+        view_menu.add_command(label="Show Logs", command=self._toggle_logs)
+
+    def _toggle_logs(self):
+        """Toggle the visibility of the log window."""
+        if self.log_window.window.winfo_viewable():
+            self.log_window.hide()
+        else:
+            self.log_window.show()
 
     def _create_widgets(self):
         """Create the GUI widgets."""
@@ -948,47 +1035,6 @@ class MediaOrganizerGUI:
             buttons_frame, text="Save Settings", command=self._save_settings_manual
         )
         save_button.pack(side=tk.RIGHT, padx=5)
-
-        # Log frame
-        log_frame = ttk.LabelFrame(self.main_frame, text="Log", padding=10)
-        log_frame.pack(fill=tk.BOTH, expand=True, pady=5)
-
-        self.log_text = tk.Text(log_frame, height=10, wrap=tk.WORD)
-        self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-
-        scrollbar = ttk.Scrollbar(log_frame, command=self.log_text.yview)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.log_text.config(yscrollcommand=scrollbar.set)
-
-        # Configure logging to text widget
-        self._setup_text_logging()
-
-    def _setup_text_logging(self):
-        """Set up logging to the text widget."""
-
-        class TextHandler(logging.Handler):
-            def __init__(self, text_widget):
-                logging.Handler.__init__(self)
-                self.text_widget = text_widget
-
-            def emit(self, record):
-                msg = self.format(record)
-
-                def append():
-                    self.text_widget.configure(state="normal")
-                    self.text_widget.insert(tk.END, msg + "\n")
-                    self.text_widget.see(tk.END)
-                    self.text_widget.configure(state="disabled")
-
-                # Schedule the append operation on the GUI thread
-                self.text_widget.after(0, append)
-
-        text_handler = TextHandler(self.log_text)
-        text_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
-        logger.addHandler(text_handler)
-
-        # Disable editing
-        self.log_text.configure(state="disabled")
 
     def _browse_source(self):
         """Browse for source directory."""
