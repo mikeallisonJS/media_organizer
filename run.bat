@@ -28,6 +28,16 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
+:: Check if MediaInfo is installed (optional)
+where mediainfo >nul 2>&1
+if %errorlevel% neq 0 (
+    echo WARNING: MediaInfo is not installed. Video metadata extraction will be limited.
+    echo To install MediaInfo on Windows: Download from https://mediaarea.net/en/MediaInfo/Download/Windows
+    echo.
+    echo Continuing without MediaInfo...
+    timeout /t 2 >nul
+)
+
 :: Run the application
 python media_organizer.py
 

@@ -23,6 +23,7 @@ A cross-platform application to organize media files based on their metadata.
 
 - Python 3.6+ (tested with Python 3.13)
 - Tkinter (usually comes with Python, but may need separate installation)
+- MediaInfo (optional, for enhanced video metadata extraction)
 
 ### macOS
 
@@ -31,8 +32,16 @@ A cross-platform application to organize media files based on their metadata.
    ```bash
    brew install python-tk@3.13  # Replace 3.13 with your Python version
    ```
-3. Clone or download this repository
-4. Run the application using the provided script:
+3. Install MediaInfo for enhanced video metadata extraction (optional but recommended):
+   ```bash
+   brew install mediainfo
+   ```
+4. Clone or download this repository
+5. Install Python dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+6. Run the application using the provided script:
    ```bash
    ./run.sh
    ```
@@ -40,8 +49,14 @@ A cross-platform application to organize media files based on their metadata.
 ### Windows
 
 1. Make sure you have Python 3 installed
-2. Clone or download this repository
-3. Run the application using the provided script:
+2. Install MediaInfo for enhanced video metadata extraction (optional but recommended):
+   - Download and install from [MediaInfo website](https://mediaarea.net/en/MediaInfo/Download/Windows)
+3. Clone or download this repository
+4. Install Python dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+5. Run the application using the provided script:
    ```
    run.bat
    ```

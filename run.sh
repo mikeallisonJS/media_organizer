@@ -23,6 +23,17 @@ if ! python3 -c "import tkinter" &> /dev/null; then
     exit 1
 fi
 
+# Check if MediaInfo is installed (optional)
+if ! command -v mediainfo &> /dev/null; then
+    echo "WARNING: MediaInfo is not installed. Video metadata extraction will be limited."
+    echo "To install MediaInfo on macOS: brew install mediainfo"
+    echo "To install MediaInfo on Linux: sudo apt-get install mediainfo (or equivalent)"
+    echo "To install MediaInfo on Windows: Download from https://mediaarea.net/en/MediaInfo/Download/Windows"
+    echo ""
+    echo "Continuing without MediaInfo..."
+    sleep 2
+fi
+
 # Run the application
 python3 media_organizer.py
 

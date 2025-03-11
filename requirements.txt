@@ -1,4 +1,5 @@
 mutagen==1.46.0
 Pillow>=11.0.0
 black>=24.2.0
+pymediainfo>=6.0.1
 # Note: Tkinter should be installed system-wide using: brew install python-tk@3.13 
