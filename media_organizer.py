@@ -749,6 +749,12 @@ class MediaOrganizerGUI:
         menubar.add_cascade(label="View", menu=view_menu)
         view_menu.add_command(label="Show Logs", command=self._toggle_logs)
 
+        # Settings menu
+        settings_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Settings", menu=settings_menu)
+        settings_menu.add_command(label="Reset to Defaults", command=self._reset_settings)
+        settings_menu.add_command(label="Save Settings", command=self._save_settings_manual)
+
     def _toggle_logs(self):
         """Toggle the visibility of the log window."""
         if self.log_window.window.winfo_viewable():
@@ -760,10 +766,10 @@ class MediaOrganizerGUI:
         """Create the GUI widgets."""
         # Create a frame to hold both directory selection frames
         directories_frame = ttk.Frame(self.main_frame)
-        directories_frame.pack(fill=tk.X, pady=5)
+        directories_frame.pack(fill=tk.X, pady=2)
 
         # Source directory selection
-        source_frame = ttk.LabelFrame(directories_frame, text="Source Directory", padding=10)
+        source_frame = ttk.LabelFrame(directories_frame, text="Source Directory", padding=5)
         source_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
 
         self.source_entry = ttk.Entry(source_frame)
@@ -773,7 +779,7 @@ class MediaOrganizerGUI:
         source_button.pack(side=tk.RIGHT)
 
         # Output directory selection
-        output_frame = ttk.LabelFrame(directories_frame, text="Output Directory", padding=10)
+        output_frame = ttk.LabelFrame(directories_frame, text="Output Directory", padding=5)
         output_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(5, 0))
 
         self.output_entry = ttk.Entry(output_frame)
@@ -783,12 +789,12 @@ class MediaOrganizerGUI:
         output_button.pack(side=tk.RIGHT)
 
         # Extension filters
-        extensions_frame = ttk.LabelFrame(self.main_frame, text="File Type Filters", padding=10)
-        extensions_frame.pack(fill=tk.X, pady=5)
+        extensions_frame = ttk.LabelFrame(self.main_frame, text="File Type Filters", padding=5)
+        extensions_frame.pack(fill=tk.X, pady=2)
 
         # Create a frame for each file type category
         file_types_frame = ttk.Frame(extensions_frame)
-        file_types_frame.pack(fill=tk.X, pady=5)
+        file_types_frame.pack(fill=tk.X, pady=2)
 
         # Audio extensions
         audio_frame = ttk.LabelFrame(file_types_frame, text="Audio")
@@ -881,11 +887,11 @@ class MediaOrganizerGUI:
             cb.grid(row=i // 2, column=i % 2, sticky=tk.W, padx=5)
 
         # Template configuration
-        template_frame = ttk.LabelFrame(self.main_frame, text="Organization Templates", padding=10)
-        template_frame.pack(fill=tk.X, pady=5)
+        template_frame = ttk.LabelFrame(self.main_frame, text="Organization Templates", padding=5)
+        template_frame.pack(fill=tk.X, pady=2)
 
         template_header_frame = ttk.Frame(template_frame)
-        template_header_frame.pack(fill=tk.X, pady=5)
+        template_header_frame.pack(fill=tk.X, pady=2)
 
         ttk.Label(template_header_frame, text="Use {placeholders} for metadata fields:").pack(
             side=tk.LEFT
@@ -899,18 +905,18 @@ class MediaOrganizerGUI:
 
         # Create a notebook for different media type templates
         template_notebook = ttk.Notebook(template_frame)
-        template_notebook.pack(fill=tk.X, pady=5)
+        template_notebook.pack(fill=tk.X, pady=2)
 
         # Audio template tab
-        audio_template_frame = ttk.Frame(template_notebook, padding=5)
+        audio_template_frame = ttk.Frame(template_notebook, padding=2)
         template_notebook.add(audio_template_frame, text="Audio")
 
         # Video template tab
-        video_template_frame = ttk.Frame(template_notebook, padding=5)
+        video_template_frame = ttk.Frame(template_notebook, padding=2)
         template_notebook.add(video_template_frame, text="Video")
 
         # Image template tab
-        image_template_frame = ttk.Frame(template_notebook, padding=5)
+        image_template_frame = ttk.Frame(template_notebook, padding=2)
         template_notebook.add(image_template_frame, text="Image")
 
         # Create template variables and entries for each media type
@@ -926,7 +932,7 @@ class MediaOrganizerGUI:
         self.template_entries["audio"] = ttk.Entry(
             audio_template_frame, textvariable=self.template_vars["audio"]
         )
-        self.template_entries["audio"].pack(fill=tk.X, pady=2)
+        self.template_entries["audio"].pack(fill=tk.X, pady=1)
         ttk.Label(
             audio_template_frame, text="Example: {file_type}/{artist}/{album}/{filename}"
         ).pack(anchor=tk.W)
@@ -940,7 +946,7 @@ class MediaOrganizerGUI:
         self.template_entries["video"] = ttk.Entry(
             video_template_frame, textvariable=self.template_vars["video"]
         )
-        self.template_entries["video"].pack(fill=tk.X, pady=2)
+        self.template_entries["video"].pack(fill=tk.X, pady=1)
         ttk.Label(video_template_frame, text="Example: {file_type}/{year}/{filename}").pack(
             anchor=tk.W
         )
@@ -954,7 +960,7 @@ class MediaOrganizerGUI:
         self.template_entries["image"] = ttk.Entry(
             image_template_frame, textvariable=self.template_vars["image"]
         )
-        self.template_entries["image"].pack(fill=tk.X, pady=2)
+        self.template_entries["image"].pack(fill=tk.X, pady=1)
         ttk.Label(
             image_template_frame,
             text="Example: {file_type}/{creation_year}/{creation_month_name}/{filename}",
@@ -995,12 +1001,12 @@ class MediaOrganizerGUI:
         self.preview_list.configure(state="disabled")
 
         # Progress frame
-        progress_frame = ttk.LabelFrame(self.main_frame, text="Progress", padding=10)
-        progress_frame.pack(fill=tk.X, pady=5)
+        progress_frame = ttk.LabelFrame(self.main_frame, text="Progress", padding=5)
+        progress_frame.pack(fill=tk.X, pady=2)
 
         self.progress_var = tk.DoubleVar()
         self.progress_bar = ttk.Progressbar(progress_frame, variable=self.progress_var, maximum=100)
-        self.progress_bar.pack(fill=tk.X, pady=5)
+        self.progress_bar.pack(fill=tk.X, pady=2)
 
         self.status_var = tk.StringVar(value="Ready")
         status_label = ttk.Label(progress_frame, textvariable=self.status_var)
@@ -1012,7 +1018,7 @@ class MediaOrganizerGUI:
 
         # Buttons frame
         buttons_frame = ttk.Frame(self.main_frame)
-        buttons_frame.pack(fill=tk.X, pady=10)
+        buttons_frame.pack(fill=tk.X, pady=3)
 
         self.start_button = ttk.Button(
             buttons_frame, text="Start Organization", command=self._start_organization
@@ -1024,13 +1030,7 @@ class MediaOrganizerGUI:
         )
         self.stop_button.pack(side=tk.LEFT, padx=5)
 
-        # Add reset settings button
-        reset_button = ttk.Button(
-            buttons_frame, text="Reset Settings", command=self._reset_settings
-        )
-        reset_button.pack(side=tk.RIGHT, padx=5)
-
-        # Add save settings button
+        # Remove reset settings button and keep only save settings button
         save_button = ttk.Button(
             buttons_frame, text="Save Settings", command=self._save_settings_manual
         )
