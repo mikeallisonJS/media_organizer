@@ -369,7 +369,7 @@ class MediaFile:
                             duration_ms = float(track.duration)
                             minutes = int(duration_ms / 60000)
                             seconds = int((duration_ms % 60000) / 1000)
-                            self.metadata["duration"] = f"{minutes}:{seconds:02d}"
+                        self.metadata["duration"] = f"{minutes}:{seconds:02d}"
 
                     # Get video track info
                     elif track.track_type == "Video":
@@ -695,6 +695,91 @@ class LogWindow:
         self.window.withdraw()
 
 
+class PreferencesDialog:
+    """Dialog for managing application preferences."""
+    
+    def __init__(self, parent, app):
+        """Initialize the preferences dialog."""
+        self.dialog = tk.Toplevel(parent)
+        self.dialog.title("Preferences")
+        self.dialog.geometry("400x200")
+        self.dialog.minsize(400, 200)
+        self.dialog.transient(parent)  # Make it a modal dialog
+        self.dialog.grab_set()  # Make it modal
+        
+        # Store reference to main app
+        self.app = app
+        
+        # Center the window
+        self.dialog.update_idletasks()
+        width = self.dialog.winfo_width()
+        height = self.dialog.winfo_height()
+        x = (self.dialog.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.dialog.winfo_screenheight() // 2) - (height // 2)
+        self.dialog.geometry(f"{width}x{height}+{x}+{y}")
+        
+        # Create the main content frame
+        self.content_frame = ttk.Frame(self.dialog, padding=20)
+        self.content_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Auto-preview option
+        self.auto_preview_var = tk.BooleanVar(value=self.app.auto_preview_enabled)
+        auto_preview_cb = ttk.Checkbutton(
+            self.content_frame,
+            text="Automatically generate preview when settings change",
+            variable=self.auto_preview_var
+        )
+        auto_preview_cb.pack(anchor=tk.W, pady=5)
+        
+        # Auto-save option
+        self.auto_save_var = tk.BooleanVar(value=getattr(self.app, 'auto_save_enabled', True))
+        auto_save_cb = ttk.Checkbutton(
+            self.content_frame,
+            text="Automatically save settings when inputs change",
+            variable=self.auto_save_var
+        )
+        auto_save_cb.pack(anchor=tk.W, pady=5)
+        
+        # Full path display option
+        self.show_full_paths_var = tk.BooleanVar(value=getattr(self.app, 'show_full_paths', False))
+        full_paths_cb = ttk.Checkbutton(
+            self.content_frame,
+            text="Show full file paths in preview",
+            variable=self.show_full_paths_var
+        )
+        full_paths_cb.pack(anchor=tk.W, pady=5)
+        
+        # Create buttons frame
+        buttons_frame = ttk.Frame(self.content_frame)
+        buttons_frame.pack(fill=tk.X, pady=(20, 0))
+        
+        # Add Save and Cancel buttons
+        save_button = ttk.Button(buttons_frame, text="Save", command=self._save_preferences)
+        save_button.pack(side=tk.RIGHT, padx=5)
+        
+        cancel_button = ttk.Button(buttons_frame, text="Cancel", command=self.dialog.destroy)
+        cancel_button.pack(side=tk.RIGHT, padx=5)
+    
+    def _save_preferences(self):
+        """Save preferences and update the main application."""
+        # Update auto-preview setting
+        self.app.auto_preview_enabled = self.auto_preview_var.get()
+        
+        # Update auto-save setting
+        self.app.auto_save_enabled = self.auto_save_var.get()
+        
+        # Update full paths setting
+        self.app.show_full_paths = self.show_full_paths_var.get()
+        
+        # Save settings to file
+        self.app._save_settings()
+        
+        # Generate preview if auto-preview is enabled
+        self.app._auto_generate_preview()
+        
+        # Close the dialog
+        self.dialog.destroy()
+
 class MediaOrganizerGUI:
     """GUI for the Media Organizer application."""
 
@@ -752,6 +837,8 @@ class MediaOrganizerGUI:
         # Settings menu
         settings_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Settings", menu=settings_menu)
+        settings_menu.add_command(label="Preferences...", command=self._show_preferences)
+        settings_menu.add_separator()
         settings_menu.add_command(label="Reset to Defaults", command=self._reset_settings)
         settings_menu.add_command(label="Save Settings", command=self._save_settings_manual)
 
@@ -761,6 +848,10 @@ class MediaOrganizerGUI:
             self.log_window.hide()
         else:
             self.log_window.show()
+
+    def _show_preferences(self):
+        """Show the preferences dialog."""
+        PreferencesDialog(self.root, self)
 
     def _create_widgets(self):
         """Create the GUI widgets."""
@@ -1045,12 +1136,6 @@ class MediaOrganizerGUI:
         )
         self.stop_button.pack(side=tk.LEFT, padx=5)
 
-        # Remove reset settings button and keep only save settings button
-        save_button = ttk.Button(
-            buttons_frame, text="Save Settings", command=self._save_settings_manual
-        )
-        save_button.pack(side=tk.RIGHT, padx=5)
-
     def _browse_source(self):
         """Browse for source directory."""
         directory = filedialog.askdirectory(title="Select Source Directory")
@@ -1059,8 +1144,9 @@ class MediaOrganizerGUI:
             self.source_entry.insert(0, directory)
             # Clear preview when source changes
             self._clear_preview()
-            # Auto-save settings
-            self._save_settings()
+            # Auto-save settings if enabled
+            if getattr(self, "auto_save_enabled", True):
+                self._save_settings()
             # Auto-generate preview
             self._auto_generate_preview()
 
@@ -1072,8 +1158,9 @@ class MediaOrganizerGUI:
             self.output_entry.insert(0, directory)
             # Clear preview when output changes
             self._clear_preview()
-            # Auto-save settings
-            self._save_settings()
+            # Auto-save settings if enabled
+            if getattr(self, "auto_save_enabled", True):
+                self._save_settings()
             # Auto-generate preview
             self._auto_generate_preview()
 
@@ -1106,8 +1193,9 @@ class MediaOrganizerGUI:
         value = getattr(self, f"{file_type}_all_var").get()
         for var in self.extension_vars[file_type].values():
             var.set(value)
-        # Auto-save settings
-        self._save_settings()
+        # Auto-save settings if enabled
+        if getattr(self, "auto_save_enabled", True):
+            self._save_settings()
         # Auto-generate preview
         self._auto_generate_preview()
 
@@ -1116,8 +1204,9 @@ class MediaOrganizerGUI:
         for file_type in ["audio", "video", "image"]:
             all_selected = all(var.get() for var in self.extension_vars[file_type].values())
             getattr(self, f"{file_type}_all_var").set(all_selected)
-        # Auto-save settings
-        self._save_settings()
+        # Auto-save settings if enabled
+        if getattr(self, "auto_save_enabled", True):
+            self._save_settings()
         # Auto-generate preview
         self._auto_generate_preview()
 
@@ -1201,16 +1290,20 @@ class MediaOrganizerGUI:
                     # Generate destination path
                     rel_path = media_file.get_formatted_path(template)
 
-                    # Get relative paths for display
-                    try:
-                        # Get relative path from source directory
-                        original_rel_path = file_path.relative_to(source_path)
-                        
-                        # Insert into treeview
-                        self.preview_tree.insert("", "end", values=(str(original_rel_path), rel_path))
-                    except ValueError:
-                        # If file is not relative to source (shouldn't happen), show full path
-                        self.preview_tree.insert("", "end", values=(str(file_path), rel_path))
+                    # Get source path for display
+                    if getattr(self, "show_full_paths", False):
+                        display_source = str(file_path)
+                        display_dest = str(self.organizer.output_dir / rel_path)
+                    else:
+                        try:
+                            display_source = str(file_path.relative_to(source_path))
+                            display_dest = rel_path
+                        except ValueError:
+                            display_source = str(file_path)
+                            display_dest = str(self.organizer.output_dir / rel_path)
+                    
+                    # Insert into treeview
+                    self.preview_tree.insert("", "end", values=(display_source, display_dest))
 
                 except Exception as e:
                     logger.error(f"Error generating preview for {file_path}: {e}")
@@ -1403,6 +1496,9 @@ class MediaOrganizerGUI:
                     "video": {ext: var.get() for ext, var in self.extension_vars["video"].items()},
                     "image": {ext: var.get() for ext, var in self.extension_vars["image"].items()},
                 },
+                "show_full_paths": getattr(self, "show_full_paths", False),
+                "auto_save_enabled": getattr(self, "auto_save_enabled", True),
+                "auto_preview_enabled": getattr(self, "auto_preview_enabled", True),
             }
 
             # Save to file
@@ -1450,6 +1546,15 @@ class MediaOrganizerGUI:
                             for ext, value in settings["extensions"][file_type].items():
                                 if ext in self.extension_vars[file_type]:
                                     self.extension_vars[file_type][ext].set(value)
+
+                # Load full paths setting
+                self.show_full_paths = settings.get("show_full_paths", False)
+
+                # Load auto-save setting (defaults to True)
+                self.auto_save_enabled = settings.get("auto_save_enabled", True)
+
+                # Load auto-preview setting (defaults to True)
+                self.auto_preview_enabled = settings.get("auto_preview_enabled", True)
 
                 # Update "All" checkboxes
                 self._update_extension_selection()
@@ -1516,14 +1621,13 @@ class MediaOrganizerGUI:
             *args: Variable arguments passed by tkinter trace
             media_type: The media type whose template changed ('audio', 'video', 'image')
         """
-        # Auto-save settings after a short delay
-        # This prevents saving on every keystroke
-        if hasattr(self, "_template_timer"):
-            self.root.after_cancel(self._template_timer)
-        self._template_timer = self.root.after(1000, self._save_settings)
+        # Auto-save settings after a short delay if enabled
+        if getattr(self, "auto_save_enabled", True):
+            if hasattr(self, "_template_timer"):
+                self.root.after_cancel(self._template_timer)
+            self._template_timer = self.root.after(1000, self._save_settings)
 
         # Auto-generate preview after a short delay
-        # This prevents generating preview on every keystroke
         if hasattr(self, "_preview_timer"):
             self.root.after_cancel(self._preview_timer)
         self._preview_timer = self.root.after(1500, self._auto_generate_preview)
