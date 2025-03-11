@@ -671,13 +671,13 @@ class MediaOrganizerGUI:
 
     def _create_widgets(self):
         """Create the GUI widgets."""
-        # Create a frame for directory selections
+        # Create a frame to hold both directory selection frames
         directories_frame = ttk.Frame(self.main_frame)
         directories_frame.pack(fill=tk.X, pady=5)
 
         # Source directory selection
         source_frame = ttk.LabelFrame(directories_frame, text="Source Directory", padding=10)
-        source_frame.grid(row=0, column=0, sticky=tk.EW, padx=(0, 5))
+        source_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
 
         self.source_entry = ttk.Entry(source_frame)
         self.source_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
@@ -687,17 +687,13 @@ class MediaOrganizerGUI:
 
         # Output directory selection
         output_frame = ttk.LabelFrame(directories_frame, text="Output Directory", padding=10)
-        output_frame.grid(row=0, column=1, sticky=tk.EW, padx=(5, 0))
+        output_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(5, 0))
 
         self.output_entry = ttk.Entry(output_frame)
         self.output_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
 
         output_button = ttk.Button(output_frame, text="Browse...", command=self._browse_output)
         output_button.pack(side=tk.RIGHT)
-
-        # Configure grid columns to expand equally
-        directories_frame.columnconfigure(0, weight=1)
-        directories_frame.columnconfigure(1, weight=1)
 
         # Extension filters
         extensions_frame = ttk.LabelFrame(self.main_frame, text="File Type Filters", padding=10)
