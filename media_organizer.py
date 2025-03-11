@@ -43,6 +43,7 @@ SUPPORTED_EXTENSIONS = {
     "audio": [".mp3", ".flac", ".m4a", ".aac", ".ogg", ".wav"],
     "video": [".mp4", ".mkv", ".avi", ".mov", ".wmv"],
     "image": [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff"],
+    "ebook": [".epub", ".pdf", ".mobi", ".azw", ".azw3", ".fb2"],
 }
 
 
@@ -72,6 +73,8 @@ class MediaFile:
                 self._extract_video_metadata()
             elif self.file_type == "image":
                 self._extract_image_metadata()
+            elif self.file_type == "ebook":
+                self._extract_ebook_metadata()
 
             # Add file information
             self.metadata["filename"] = self.file_path.name
@@ -423,6 +426,178 @@ class MediaFile:
         except Exception as e:
             logger.error(f"Error extracting image metadata from {self.file_path}: {e}")
 
+    def _extract_ebook_metadata(self):
+        """Extract metadata from ebook files."""
+        # Initialize default metadata values
+        self.metadata.update({
+            "title": self.file_path.stem,
+            "author": "Unknown",
+            "year": "Unknown",
+            "genre": "Unknown",
+            "publisher": "Unknown",
+            "isbn": "Unknown",
+            "language": "Unknown",
+        })
+
+        ext = self.file_path.suffix.lower()
+
+        try:
+            # PDF files
+            if ext == ".pdf":
+                try:
+                    from PyPDF2 import PdfReader
+                    reader = PdfReader(self.file_path)
+                    info = reader.metadata
+                    if info:
+                        if info.get("/Title"):
+                            self.metadata["title"] = info["/Title"]
+                        if info.get("/Author"):
+                            self.metadata["author"] = info["/Author"]
+                        if info.get("/Producer"):
+                            self.metadata["publisher"] = info["/Producer"]
+                        if info.get("/CreationDate"):
+                            # Try to extract year from PDF creation date
+                            date_str = info["/CreationDate"]
+                            year_match = re.search(r"D:(\d{4})", date_str)
+                            if year_match:
+                                self.metadata["year"] = year_match.group(1)
+                except ImportError:
+                    logger.warning("PyPDF2 not available. Limited PDF metadata extraction.")
+                except Exception as e:
+                    logger.error(f"Error extracting PDF metadata from {self.file_path}: {e}")
+
+            # EPUB files
+            elif ext == ".epub":
+                try:
+                    import zipfile
+                    from xml.etree import ElementTree as ET
+                    
+                    with zipfile.ZipFile(self.file_path) as epub:
+                        # Try to find and parse the OPF file
+                        for name in epub.namelist():
+                            if name.endswith(".opf"):
+                                with epub.open(name) as opf:
+                                    tree = ET.parse(opf)
+                                    root = tree.getroot()
+                                    
+                                    # Define XML namespaces
+                                    ns = {
+                                        'dc': 'http://purl.org/dc/elements/1.1/',
+                                        'opf': 'http://www.idpf.org/2007/opf'
+                                    }
+                                    
+                                    # Extract metadata
+                                    metadata = root.find('.//{http://www.idpf.org/2007/opf}metadata')
+                                    if metadata is not None:
+                                        title = metadata.find('.//dc:title', ns)
+                                        if title is not None and title.text:
+                                            self.metadata["title"] = title.text
+                                            
+                                        creator = metadata.find('.//dc:creator', ns)
+                                        if creator is not None and creator.text:
+                                            self.metadata["author"] = creator.text
+                                            
+                                        date = metadata.find('.//dc:date', ns)
+                                        if date is not None and date.text:
+                                            # Try to extract year from date
+                                            year_match = re.search(r"\d{4}", date.text)
+                                            if year_match:
+                                                self.metadata["year"] = year_match.group(0)
+                                                
+                                        publisher = metadata.find('.//dc:publisher', ns)
+                                        if publisher is not None and publisher.text:
+                                            self.metadata["publisher"] = publisher.text
+                                            
+                                        language = metadata.find('.//dc:language', ns)
+                                        if language is not None and language.text:
+                                            self.metadata["language"] = language.text
+                                            
+                                        identifier = metadata.find('.//dc:identifier', ns)
+                                        if identifier is not None and identifier.text:
+                                            # Try to extract ISBN
+                                            if "isbn" in identifier.text.lower():
+                                                self.metadata["isbn"] = identifier.text
+                                break
+                except Exception as e:
+                    logger.error(f"Error extracting EPUB metadata from {self.file_path}: {e}")
+
+            # MOBI/AZW/AZW3 files
+            elif ext in [".mobi", ".azw", ".azw3"]:
+                try:
+                    import mobi
+                    book = mobi.Mobi(self.file_path)
+                    book.parse()
+                    
+                    if book.title:
+                        self.metadata["title"] = book.title
+                    if book.author:
+                        self.metadata["author"] = book.author
+                    if book.publisher:
+                        self.metadata["publisher"] = book.publisher
+                    if book.publication_date:
+                        # Try to extract year from publication date
+                        year_match = re.search(r"\d{4}", book.publication_date)
+                        if year_match:
+                            self.metadata["year"] = year_match.group(0)
+                    if book.language:
+                        self.metadata["language"] = book.language
+                except ImportError:
+                    logger.warning("mobi-python not available. Limited MOBI/AZW metadata extraction.")
+                except Exception as e:
+                    logger.error(f"Error extracting MOBI/AZW metadata from {self.file_path}: {e}")
+
+            # FB2 files
+            elif ext == ".fb2":
+                try:
+                    from xml.etree import ElementTree as ET
+                    
+                    tree = ET.parse(self.file_path)
+                    root = tree.getroot()
+                    
+                    # Find title info section
+                    title_info = root.find(".//title-info")
+                    if title_info is not None:
+                        book_title = title_info.find(".//book-title")
+                        if book_title is not None and book_title.text:
+                            self.metadata["title"] = book_title.text
+                            
+                        author = title_info.find(".//author")
+                        if author is not None:
+                            first_name = author.find(".//first-name")
+                            last_name = author.find(".//last-name")
+                            author_name = []
+                            if first_name is not None and first_name.text:
+                                author_name.append(first_name.text)
+                            if last_name is not None and last_name.text:
+                                author_name.append(last_name.text)
+                            if author_name:
+                                self.metadata["author"] = " ".join(author_name)
+                                
+                        genre = title_info.find(".//genre")
+                        if genre is not None and genre.text:
+                            self.metadata["genre"] = genre.text
+                            
+                        lang = title_info.find(".//lang")
+                        if lang is not None and lang.text:
+                            self.metadata["language"] = lang.text
+                            
+                        date = title_info.find(".//date")
+                        if date is not None and date.text:
+                            # Try to extract year from date
+                            year_match = re.search(r"\d{4}", date.text)
+                            if year_match:
+                                self.metadata["year"] = year_match.group(0)
+                except Exception as e:
+                    logger.error(f"Error extracting FB2 metadata from {self.file_path}: {e}")
+
+            logger.info(f"Extracted ebook metadata for {self.file_path}")
+
+        except Exception as e:
+            logger.error(f"Error in ebook metadata extraction for {self.file_path}: {e}")
+            # Ensure we have at least basic metadata
+            if "title" not in self.metadata:
+                self.metadata["title"] = self.file_path.stem
+
     def get_formatted_path(self, template):
         """
         Generate a formatted path based on the template and metadata.
@@ -483,6 +658,7 @@ class MediaOrganizer:
             "audio": "{file_type}/{artist}/{album}/{filename}",
             "video": "{file_type}/{year}/{filename}",
             "image": "{file_type}/{creation_year}/{creation_month_name}/{filename}",
+            "ebook": "{file_type}/{author}/{title}/{filename}",
         }
         # For backward compatibility
         self.template = "{file_type}/{artist}/{album}/{filename}"
@@ -702,8 +878,8 @@ class PreferencesDialog:
         """Initialize the preferences dialog."""
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("Preferences")
-        self.dialog.geometry("400x200")
-        self.dialog.minsize(400, 200)
+        self.dialog.geometry("500x400")
+        self.dialog.minsize(500, 400)
         self.dialog.transient(parent)  # Make it a modal dialog
         self.dialog.grab_set()  # Make it modal
         
@@ -719,13 +895,21 @@ class PreferencesDialog:
         self.dialog.geometry(f"{width}x{height}+{x}+{y}")
         
         # Create the main content frame
-        self.content_frame = ttk.Frame(self.dialog, padding=20)
+        self.content_frame = ttk.Frame(self.dialog, padding=10)
         self.content_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Create notebook for tabs
+        self.notebook = ttk.Notebook(self.content_frame)
+        self.notebook.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        
+        # Create General tab
+        self.general_frame = ttk.Frame(self.notebook, padding=10)
+        self.notebook.add(self.general_frame, text="General")
         
         # Auto-preview option
         self.auto_preview_var = tk.BooleanVar(value=self.app.auto_preview_enabled)
         auto_preview_cb = ttk.Checkbutton(
-            self.content_frame,
+            self.general_frame,
             text="Automatically generate preview when settings change",
             variable=self.auto_preview_var
         )
@@ -734,7 +918,7 @@ class PreferencesDialog:
         # Auto-save option
         self.auto_save_var = tk.BooleanVar(value=getattr(self.app, 'auto_save_enabled', True))
         auto_save_cb = ttk.Checkbutton(
-            self.content_frame,
+            self.general_frame,
             text="Automatically save settings when inputs change",
             variable=self.auto_save_var
         )
@@ -743,15 +927,55 @@ class PreferencesDialog:
         # Full path display option
         self.show_full_paths_var = tk.BooleanVar(value=getattr(self.app, 'show_full_paths', False))
         full_paths_cb = ttk.Checkbutton(
-            self.content_frame,
+            self.general_frame,
             text="Show full file paths in preview",
             variable=self.show_full_paths_var
         )
         full_paths_cb.pack(anchor=tk.W, pady=5)
         
+        # Create File Types tab
+        self.file_types_frame = ttk.Frame(self.notebook, padding=10)
+        self.notebook.add(self.file_types_frame, text="File Types")
+        
+        # Create sub-notebook for file type tabs
+        self.file_types_notebook = ttk.Notebook(self.file_types_frame)
+        self.file_types_notebook.pack(fill=tk.BOTH, expand=True)
+        
+        # Create text variables for extensions
+        self.extension_texts = {}
+        
+        # Create sub-tabs for each media type
+        for media_type in ["audio", "video", "image", "ebook"]:
+            frame = ttk.Frame(self.file_types_notebook, padding=10)
+            self.file_types_notebook.add(frame, text=media_type.title())
+            
+            # Add description label
+            ttk.Label(
+                frame,
+                text=f"Enter file extensions for {media_type} files (one per line, with or without dot):",
+                wraplength=400
+            ).pack(anchor=tk.W, pady=(0, 5))
+            
+            # Create text widget with scrollbar for extensions
+            text_frame = ttk.Frame(frame)
+            text_frame.pack(fill=tk.BOTH, expand=True)
+            
+            text_widget = tk.Text(text_frame, height=10, width=40)
+            scrollbar = ttk.Scrollbar(text_frame, orient="vertical", command=text_widget.yview)
+            text_widget.configure(yscrollcommand=scrollbar.set)
+            
+            text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            
+            # Get current extensions and format them
+            current_extensions = [ext.lstrip(".") for ext in SUPPORTED_EXTENSIONS[media_type]]
+            text_widget.insert("1.0", "\n".join(current_extensions))
+            
+            self.extension_texts[media_type] = text_widget
+        
         # Create buttons frame
         buttons_frame = ttk.Frame(self.content_frame)
-        buttons_frame.pack(fill=tk.X, pady=(20, 0))
+        buttons_frame.pack(fill=tk.X, pady=(0, 10))
         
         # Add Save and Cancel buttons
         save_button = ttk.Button(buttons_frame, text="Save", command=self._save_preferences)
@@ -771,6 +995,23 @@ class PreferencesDialog:
         # Update full paths setting
         self.app.show_full_paths = self.show_full_paths_var.get()
         
+        # Update extensions
+        new_extensions = {}
+        for media_type, text_widget in self.extension_texts.items():
+            # Get extensions from text widget
+            extensions = text_widget.get("1.0", "end-1c").split("\n")
+            # Clean up extensions (remove empty lines, add dot if missing)
+            extensions = [ext.strip() for ext in extensions if ext.strip()]
+            extensions = [ext if ext.startswith(".") else f".{ext}" for ext in extensions]
+            new_extensions[media_type] = extensions
+        
+        # Update SUPPORTED_EXTENSIONS
+        global SUPPORTED_EXTENSIONS
+        SUPPORTED_EXTENSIONS = new_extensions
+        
+        # Update the main window's extension checkboxes
+        self.app._update_extension_selection()
+        
         # Save settings to file
         self.app._save_settings()
         
@@ -779,6 +1020,64 @@ class PreferencesDialog:
         
         # Close the dialog
         self.dialog.destroy()
+
+    def _update_extension_checkboxes(self):
+        """Update the extension checkboxes in the main window based on SUPPORTED_EXTENSIONS."""
+        # Clear existing extension frames
+        for frame in self.main_frame.winfo_children():
+            if isinstance(frame, ttk.LabelFrame) and frame.winfo_children() and \
+               isinstance(frame.winfo_children()[0], ttk.Frame) and \
+               frame.winfo_children()[0].winfo_children() and \
+               any(child.winfo_name().endswith('frame') for child in frame.winfo_children()[0].winfo_children()):
+                frame.destroy()
+
+        # Recreate extension filters frame
+        extensions_frame = ttk.LabelFrame(self.main_frame, text="File Type Filters", padding=5)
+        extensions_frame.pack(fill=tk.X, pady=2)
+
+        # Create a frame for each file type category
+        file_types_frame = ttk.Frame(extensions_frame)
+        file_types_frame.pack(fill=tk.X, pady=2)
+
+        # Clear existing extension variables
+        self.extension_vars = {"audio": {}, "video": {}, "image": {}, "ebook": {}}
+
+        # Recreate frames for each media type
+        for media_type, title in [("audio", "Audio"), ("video", "Video"), 
+                                ("image", "Image"), ("ebook", "eBook")]:
+            type_frame = ttk.LabelFrame(file_types_frame, text=title)
+            type_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
+
+            # Create "Select All" checkbox
+            all_var = tk.BooleanVar(value=True)
+            setattr(self, f"{media_type}_all_var", all_var)
+            all_cb = ttk.Checkbutton(
+                type_frame,
+                text=f"All {title}",
+                variable=all_var,
+                command=lambda t=media_type: self._toggle_all_extensions(t),
+            )
+            all_cb.pack(anchor=tk.W)
+
+            # Create individual checkboxes for extensions
+            extensions_frame = ttk.Frame(type_frame)
+            extensions_frame.pack(fill=tk.X, padx=10)
+
+            for i, ext in enumerate(SUPPORTED_EXTENSIONS[media_type]):
+                ext_name = ext.lstrip(".")
+                var = tk.BooleanVar(value=True)
+                self.extension_vars[media_type][ext] = var
+                cb = ttk.Checkbutton(
+                    extensions_frame,
+                    text=ext_name,
+                    variable=var,
+                    command=self._update_extension_selection,
+                )
+                cb.grid(row=i // 2, column=i % 2, sticky=tk.W, padx=5)
+
+        # Update the layout
+        self.main_frame.update_idletasks()
+
 
 class MediaOrganizerGUI:
     """GUI for the Media Organizer application."""
@@ -797,7 +1096,7 @@ class MediaOrganizerGUI:
         self.organizer = MediaOrganizer()
 
         # Create variables for extension filters
-        self.extension_vars = {"audio": {}, "video": {}, "image": {}}
+        self.extension_vars = {"audio": {}, "video": {}, "image": {}, "ebook": {}}
 
         # Config file path
         self.config_file = Path.home() / ".media_organizer_config.json"
@@ -977,6 +1276,36 @@ class MediaOrganizerGUI:
             )
             cb.grid(row=i // 2, column=i % 2, sticky=tk.W, padx=5)
 
+        # eBook extensions
+        ebook_frame = ttk.LabelFrame(file_types_frame, text="eBook")
+        ebook_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
+
+        # Create "Select All" checkbox for eBook
+        self.ebook_all_var = tk.BooleanVar(value=True)
+        ebook_all_cb = ttk.Checkbutton(
+            ebook_frame,
+            text="All eBooks",
+            variable=self.ebook_all_var,
+            command=lambda: self._toggle_all_extensions("ebook"),
+        )
+        ebook_all_cb.pack(anchor=tk.W)
+
+        # Create individual checkboxes for eBook extensions
+        ebook_extensions_frame = ttk.Frame(ebook_frame)
+        ebook_extensions_frame.pack(fill=tk.X, padx=10)
+
+        for i, ext in enumerate(SUPPORTED_EXTENSIONS["ebook"]):
+            ext_name = ext.lstrip(".")
+            var = tk.BooleanVar(value=True)
+            self.extension_vars["ebook"][ext] = var
+            cb = ttk.Checkbutton(
+                ebook_extensions_frame,
+                text=ext_name,
+                variable=var,
+                command=self._update_extension_selection,
+            )
+            cb.grid(row=i // 2, column=i % 2, sticky=tk.W, padx=5)
+
         # Template configuration
         template_frame = ttk.LabelFrame(self.main_frame, text="Organization Templates", padding=5)
         template_frame.pack(fill=tk.X, pady=2)
@@ -1009,6 +1338,10 @@ class MediaOrganizerGUI:
         # Image template tab
         image_template_frame = ttk.Frame(template_notebook, padding=2)
         template_notebook.add(image_template_frame, text="Image")
+
+        # eBook template tab
+        ebook_template_frame = ttk.Frame(template_notebook, padding=2)
+        template_notebook.add(ebook_template_frame, text="eBook")
 
         # Create template variables and entries for each media type
         self.template_vars = {}
@@ -1055,6 +1388,21 @@ class MediaOrganizerGUI:
         ttk.Label(
             image_template_frame,
             text="Example: {file_type}/{creation_year}/{creation_month_name}/{filename}",
+        ).pack(anchor=tk.W)
+
+        # eBook template
+        self.template_vars["ebook"] = tk.StringVar(value=self.organizer.templates["ebook"])
+        self.template_vars["ebook"].trace_add(
+            "write", lambda *args: self._on_template_change("ebook")
+        )
+        ttk.Label(ebook_template_frame, text="eBook Template:").pack(anchor=tk.W)
+        self.template_entries["ebook"] = ttk.Entry(
+            ebook_template_frame, textvariable=self.template_vars["ebook"]
+        )
+        self.template_entries["ebook"].pack(fill=tk.X, pady=1)
+        ttk.Label(
+            ebook_template_frame,
+            text="Example: {file_type}/{author}/{title}/{filename}",
         ).pack(anchor=tk.W)
 
         # For backward compatibility
@@ -1201,7 +1549,7 @@ class MediaOrganizerGUI:
 
     def _update_extension_selection(self):
         """Update the 'All' checkboxes based on individual selections."""
-        for file_type in ["audio", "video", "image"]:
+        for file_type in ["audio", "video", "image", "ebook"]:
             all_selected = all(var.get() for var in self.extension_vars[file_type].values())
             getattr(self, f"{file_type}_all_var").set(all_selected)
         # Auto-save settings if enabled
@@ -1230,6 +1578,7 @@ class MediaOrganizerGUI:
             "audio": self.template_vars["audio"].get().strip(),
             "video": self.template_vars["video"].get().strip(),
             "image": self.template_vars["image"].get().strip(),
+            "ebook": self.template_vars["ebook"].get().strip(),
         }
 
         if not source_dir:
@@ -1329,6 +1678,7 @@ class MediaOrganizerGUI:
             "audio": self.template_vars["audio"].get().strip(),
             "video": self.template_vars["video"].get().strip(),
             "image": self.template_vars["image"].get().strip(),
+            "ebook": self.template_vars["ebook"].get().strip(),
         }
 
         if not source_dir or not output_dir:
@@ -1488,6 +1838,7 @@ class MediaOrganizerGUI:
                     "audio": self.template_vars["audio"].get().strip(),
                     "video": self.template_vars["video"].get().strip(),
                     "image": self.template_vars["image"].get().strip(),
+                    "ebook": self.template_vars["ebook"].get().strip(),
                 },
                 # For backward compatibility
                 "template": self.template_vars["audio"].get().strip(),
@@ -1495,6 +1846,7 @@ class MediaOrganizerGUI:
                     "audio": {ext: var.get() for ext, var in self.extension_vars["audio"].items()},
                     "video": {ext: var.get() for ext, var in self.extension_vars["video"].items()},
                     "image": {ext: var.get() for ext, var in self.extension_vars["image"].items()},
+                    "ebook": {ext: var.get() for ext, var in self.extension_vars["ebook"].items()},
                 },
                 "show_full_paths": getattr(self, "show_full_paths", False),
                 "auto_save_enabled": getattr(self, "auto_save_enabled", True),
@@ -1527,7 +1879,7 @@ class MediaOrganizerGUI:
 
                 # Load templates
                 if "templates" in settings:
-                    for media_type in ["audio", "video", "image"]:
+                    for media_type in ["audio", "video", "image", "ebook"]:
                         if (
                             media_type in settings["templates"]
                             and settings["templates"][media_type]
@@ -1541,7 +1893,7 @@ class MediaOrganizerGUI:
 
                 # Apply extension selections
                 if "extensions" in settings:
-                    for file_type in ["audio", "video", "image"]:
+                    for file_type in ["audio", "video", "image", "ebook"]:
                         if file_type in settings["extensions"]:
                             for ext, value in settings["extensions"][file_type].items():
                                 if ext in self.extension_vars[file_type]:
@@ -1582,12 +1934,13 @@ class MediaOrganizerGUI:
                 self.template_vars["image"].set(
                     "{file_type}/{creation_year}/{creation_month_name}/{filename}"
                 )
+                self.template_vars["ebook"].set("{file_type}/{author}/{title}/{filename}")
 
                 # For backward compatibility
                 self.template_var.set("{file_type}/{artist}/{album}/{filename}")
 
                 # Reset extension checkboxes to checked
-                for file_type in ["audio", "video", "image"]:
+                for file_type in ["audio", "video", "image", "ebook"]:
                     getattr(self, f"{file_type}_all_var").set(True)
                     self._toggle_all_extensions(file_type)
 
@@ -1619,7 +1972,7 @@ class MediaOrganizerGUI:
 
         Args:
             *args: Variable arguments passed by tkinter trace
-            media_type: The media type whose template changed ('audio', 'video', 'image')
+            media_type: The media type whose template changed ('audio', 'video', 'image', 'ebook')
         """
         # Auto-save settings after a short delay if enabled
         if getattr(self, "auto_save_enabled", True):
@@ -1682,7 +2035,7 @@ class MediaOrganizerGUI:
         common_placeholders = [
             ("{filename}", "Original filename without extension"),
             ("{extension}", "File extension (e.g., mp3, jpg)"),
-            ("{file_type}", "Type of file (audio, video, image)"),
+            ("{file_type}", "Type of file (audio, video, image, ebook)"),
             ("{size}", "File size in bytes"),
             ("{creation_date}", "File creation date (YYYY-MM-DD)"),
             ("{creation_year}", "Year of file creation (YYYY)"),
@@ -1739,6 +2092,25 @@ class MediaOrganizerGUI:
                 row=i // 2, column=(i % 2) * 2, sticky=tk.W, padx=5, pady=2
             )
             ttk.Label(image_frame, text=description, anchor=tk.W).grid(
+                row=i // 2, column=(i % 2) * 2 + 1, sticky=tk.W, padx=5, pady=2
+            )
+
+        # eBook placeholders
+        ebook_frame = ttk.LabelFrame(categories_frame, text="eBook", padding=10)
+        ebook_frame.pack(fill=tk.X, pady=5)
+
+        ebook_placeholders = [
+            ("{title}", "Book title"),
+            ("{author}", "Author name"),
+            ("{year}", "Publication year"),
+            ("{genre}", "Book genre"),
+        ]
+
+        for i, (placeholder, description) in enumerate(ebook_placeholders):
+            ttk.Label(ebook_frame, text=placeholder, width=15, anchor=tk.W).grid(
+                row=i // 2, column=(i % 2) * 2, sticky=tk.W, padx=5, pady=2
+            )
+            ttk.Label(ebook_frame, text=description, anchor=tk.W).grid(
                 row=i // 2, column=(i % 2) * 2 + 1, sticky=tk.W, padx=5, pady=2
             )
 
