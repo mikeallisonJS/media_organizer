@@ -4,7 +4,6 @@ Media Organizer - A tool to organize media files based on metadata.
 """
 
 import os
-import sys
 import shutil
 import logging
 import threading
@@ -19,8 +18,7 @@ from mutagen.mp3 import MP3
 from mutagen.flac import FLAC
 from mutagen.mp4 import MP4
 from mutagen.id3 import ID3
-from PIL import Image, ImageTk
-import subprocess
+from PIL import Image
 
 try:
     from pymediainfo import MediaInfo
@@ -668,23 +666,38 @@ class MediaOrganizerGUI:
         # Set up window close handler
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
-        # Initialize Git repository for the project
-        self._init_git_repo()
-
         # Log startup
         logger.info("Media Organizer started")
 
     def _create_widgets(self):
         """Create the GUI widgets."""
+        # Create a frame for directory selections
+        directories_frame = ttk.Frame(self.main_frame)
+        directories_frame.pack(fill=tk.X, pady=5)
+
         # Source directory selection
-        source_frame = ttk.LabelFrame(self.main_frame, text="Source Directory", padding=10)
-        source_frame.pack(fill=tk.X, pady=5)
+        source_frame = ttk.LabelFrame(directories_frame, text="Source Directory", padding=10)
+        source_frame.grid(row=0, column=0, sticky=tk.EW, padx=(0, 5))
 
         self.source_entry = ttk.Entry(source_frame)
         self.source_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
 
         source_button = ttk.Button(source_frame, text="Browse...", command=self._browse_source)
         source_button.pack(side=tk.RIGHT)
+
+        # Output directory selection
+        output_frame = ttk.LabelFrame(directories_frame, text="Output Directory", padding=10)
+        output_frame.grid(row=0, column=1, sticky=tk.EW, padx=(5, 0))
+
+        self.output_entry = ttk.Entry(output_frame)
+        self.output_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
+
+        output_button = ttk.Button(output_frame, text="Browse...", command=self._browse_output)
+        output_button.pack(side=tk.RIGHT)
+
+        # Configure grid columns to expand equally
+        directories_frame.columnconfigure(0, weight=1)
+        directories_frame.columnconfigure(1, weight=1)
 
         # Extension filters
         extensions_frame = ttk.LabelFrame(self.main_frame, text="File Type Filters", padding=10)
@@ -783,16 +796,6 @@ class MediaOrganizerGUI:
                 command=self._update_extension_selection,
             )
             cb.grid(row=i // 2, column=i % 2, sticky=tk.W, padx=5)
-
-        # Output directory selection
-        output_frame = ttk.LabelFrame(self.main_frame, text="Output Directory", padding=10)
-        output_frame.pack(fill=tk.X, pady=5)
-
-        self.output_entry = ttk.Entry(output_frame)
-        self.output_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
-
-        output_button = ttk.Button(output_frame, text="Browse...", command=self._browse_output)
-        output_button.pack(side=tk.RIGHT)
 
         # Template configuration
         template_frame = ttk.LabelFrame(self.main_frame, text="Organization Templates", padding=10)
@@ -1623,91 +1626,6 @@ class MediaOrganizerGUI:
         # Close button
         close_button = ttk.Button(content_frame, text="Close", command=help_window.destroy)
         close_button.pack(pady=20)
-
-    def _init_git_repo(self):
-        """Initialize Git repository for the project if it doesn't exist."""
-        try:
-            # Check if we're in a Git repository
-            project_dir = Path(__file__).parent.absolute()
-            git_dir = project_dir / ".git"
-
-            if not git_dir.exists():
-                # Initialize Git repository
-                result = self._run_git_command(["init"], cwd=str(project_dir))
-                if result and result.returncode == 0:
-                    logger.info(f"Git repository initialized for the project at {project_dir}")
-
-                    # Create initial .gitignore file
-                    gitignore_path = project_dir / ".gitignore"
-                    if not gitignore_path.exists():
-                        with open(gitignore_path, "w") as f:
-                            f.write("# Python\n")
-                            f.write("__pycache__/\n*.py[cod]\n*$py.class\n")
-                            f.write("*.so\n.Python\nenv/\nbuild/\ndevelop-eggs/\ndist/\n")
-                            f.write("downloads/\neggs/\n.eggs/\nlib/\nlib64/\nparts/\nsdist/\n")
-                            f.write("var/\n*.egg-info/\n.installed.cfg\n*.egg\n")
-                            f.write("\n# Virtual environments\nvenv/\nENV/\n.env\n")
-                            f.write("\n# Logs\n*.log\n")
-                            f.write("\n# User settings\n.media_organizer_config.json\n")
-                            f.write("\n# System files\n.DS_Store\nThumbs.db\n")
-
-                    # Add files to Git
-                    self._run_git_command(["add", "."], cwd=str(project_dir))
-
-                    # Try to set user config if not already set
-                    try:
-                        # Check if user config exists
-                        user_name = self._run_git_command(
-                            ["config", "user.name"], cwd=str(project_dir)
-                        )
-                        user_email = self._run_git_command(
-                            ["config", "user.email"], cwd=str(project_dir)
-                        )
-
-                        if not (user_name and user_name.stdout.strip()) or not (
-                            user_email and user_email.stdout.strip()
-                        ):
-                            # Try to get system username
-                            import getpass
-
-                            username = getpass.getuser()
-
-                            # Set default Git config
-                            self._run_git_command(
-                                ["config", "user.email", f"{username}@example.com"],
-                                cwd=str(project_dir),
-                            )
-                            self._run_git_command(
-                                ["config", "user.name", f"{username.capitalize()}"],
-                                cwd=str(project_dir),
-                            )
-                    except Exception as e:
-                        logger.warning(f"Could not set Git user config: {e}")
-
-                    # Initial commit
-                    self._run_git_command(
-                        ["commit", "-m", "Initial commit: Media Organizer project"],
-                        cwd=str(project_dir),
-                    )
-
-                    logger.info("Project initialized with Git")
-                else:
-                    logger.error(
-                        f"Failed to initialize Git repository: {result.stderr if result else 'Unknown error'}"
-                    )
-            else:
-                logger.info(f"Using existing Git repository at {project_dir}")
-        except Exception as e:
-            logger.error(f"Error initializing Git repository: {e}")
-
-    def _run_git_command(self, args, cwd=None):
-        """Run a Git command and return the result."""
-        try:
-            result = subprocess.run(["git"] + args, cwd=cwd, capture_output=True, text=True)
-            return result
-        except Exception as e:
-            logger.error(f"Error running Git command: {e}")
-            return None
 
 
 def main():
