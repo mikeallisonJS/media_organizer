@@ -79,9 +79,13 @@ class MediaFile:
             self.metadata["filename"] = self.file_path.name
             self.metadata["extension"] = self.file_path.suffix.lower()[1:]  # Remove the dot
             self.metadata["size"] = self.file_path.stat().st_size
-            self.metadata["creation_date"] = datetime.fromtimestamp(
-                self.file_path.stat().st_ctime
-            ).strftime("%Y-%m-%d")
+
+            # Extract creation date information
+            creation_time = datetime.fromtimestamp(self.file_path.stat().st_ctime)
+            self.metadata["creation_date"] = creation_time.strftime("%Y-%m-%d")
+            self.metadata["creation_year"] = creation_time.strftime("%Y")
+            self.metadata["creation_month"] = creation_time.strftime("%m")  # Numeric month (01-12)
+            self.metadata["creation_month_name"] = creation_time.strftime("%B")  # Full month name
 
         except Exception as e:
             logger.error(f"Error extracting metadata from {self.file_path}: {e}")
@@ -90,43 +94,248 @@ class MediaFile:
         """Extract metadata from audio files."""
         ext = self.file_path.suffix.lower()
 
+        # Initialize default metadata values
+        self.metadata.update(
+            {
+                "title": self.file_path.stem,
+                "artist": "Unknown",
+                "album": "Unknown",
+                "year": "Unknown",
+                "genre": "Unknown",
+                "track": "Unknown",
+                "duration": "Unknown",
+                "bitrate": "Unknown",
+                "sample_rate": "Unknown",
+            }
+        )
+
         try:
+            # MP3 files
             if ext == ".mp3":
-                audio = MP3(self.file_path)
-                if audio.tags:
-                    id3 = ID3(self.file_path)
-                    self.metadata["title"] = str(id3.get("TIT2", ""))
-                    self.metadata["artist"] = str(id3.get("TPE1", ""))
-                    self.metadata["album"] = str(id3.get("TALB", ""))
-                    self.metadata["year"] = str(id3.get("TDRC", ""))
-                    self.metadata["genre"] = str(id3.get("TCON", ""))
-                    self.metadata["track"] = str(id3.get("TRCK", ""))
+                try:
+                    audio = MP3(self.file_path)
+                    if audio.tags:
+                        id3 = ID3(self.file_path)
+                        if "TIT2" in id3:
+                            self.metadata["title"] = str(id3["TIT2"])
+                        if "TPE1" in id3:
+                            self.metadata["artist"] = str(id3["TPE1"])
+                        if "TALB" in id3:
+                            self.metadata["album"] = str(id3["TALB"])
+                        if "TDRC" in id3:
+                            self.metadata["year"] = str(id3["TDRC"])[:4]  # Extract just the year
+                        if "TCON" in id3:
+                            self.metadata["genre"] = str(id3["TCON"])
+                        if "TRCK" in id3:
+                            self.metadata["track"] = str(id3["TRCK"])
 
+                    # Add audio-specific information
+                    if hasattr(audio, "info"):
+                        duration_seconds = int(audio.info.length)
+                        minutes = duration_seconds // 60
+                        seconds = duration_seconds % 60
+                        self.metadata["duration"] = f"{minutes}:{seconds:02d}"
+
+                        if hasattr(audio.info, "bitrate"):
+                            self.metadata["bitrate"] = f"{audio.info.bitrate // 1000} kbps"
+                        if hasattr(audio.info, "sample_rate"):
+                            self.metadata["sample_rate"] = f"{audio.info.sample_rate // 1000} kHz"
+                except Exception as e:
+                    logger.error(f"Error extracting MP3 metadata from {self.file_path}: {e}")
+
+            # FLAC files
             elif ext == ".flac":
-                audio = FLAC(self.file_path)
-                self.metadata["title"] = ", ".join(audio.get("title", [""]))
-                self.metadata["artist"] = ", ".join(audio.get("artist", [""]))
-                self.metadata["album"] = ", ".join(audio.get("album", [""]))
-                self.metadata["year"] = ", ".join(audio.get("date", [""]))
-                self.metadata["genre"] = ", ".join(audio.get("genre", [""]))
-                self.metadata["track"] = ", ".join(audio.get("tracknumber", [""]))
+                try:
+                    audio = FLAC(self.file_path)
+                    if "title" in audio:
+                        self.metadata["title"] = ", ".join(audio["title"])
+                    if "artist" in audio:
+                        self.metadata["artist"] = ", ".join(audio["artist"])
+                    if "album" in audio:
+                        self.metadata["album"] = ", ".join(audio["album"])
+                    if "date" in audio:
+                        date_value = ", ".join(audio["date"])
+                        # Try to extract just the year
+                        year_match = re.search(r"\d{4}", date_value)
+                        if year_match:
+                            self.metadata["year"] = year_match.group(0)
+                        else:
+                            self.metadata["year"] = date_value
+                    if "genre" in audio:
+                        self.metadata["genre"] = ", ".join(audio["genre"])
+                    if "tracknumber" in audio:
+                        self.metadata["track"] = ", ".join(audio["tracknumber"])
 
+                    # Add audio-specific information
+                    if hasattr(audio, "info"):
+                        duration_seconds = int(audio.info.length)
+                        minutes = duration_seconds // 60
+                        seconds = duration_seconds % 60
+                        self.metadata["duration"] = f"{minutes}:{seconds:02d}"
+
+                        if hasattr(audio.info, "bitrate"):
+                            self.metadata["bitrate"] = f"{audio.info.bitrate // 1000} kbps"
+                        if hasattr(audio.info, "sample_rate"):
+                            self.metadata["sample_rate"] = f"{audio.info.sample_rate // 1000} kHz"
+                except Exception as e:
+                    logger.error(f"Error extracting FLAC metadata from {self.file_path}: {e}")
+
+            # M4A/AAC files
             elif ext in [".m4a", ".aac"]:
-                audio = MP4(self.file_path)
-                self.metadata["title"] = ", ".join(audio.get("\xa9nam", [""]))
-                self.metadata["artist"] = ", ".join(audio.get("\xa9ART", [""]))
-                self.metadata["album"] = ", ".join(audio.get("\xa9alb", [""]))
-                self.metadata["year"] = ", ".join(audio.get("\xa9day", [""]))
-                self.metadata["genre"] = ", ".join(audio.get("\xa9gen", [""]))
+                try:
+                    audio = MP4(self.file_path)
+                    if "\xa9nam" in audio:
+                        self.metadata["title"] = ", ".join(audio["\xa9nam"])
+                    if "\xa9ART" in audio:
+                        self.metadata["artist"] = ", ".join(audio["\xa9ART"])
+                    if "\xa9alb" in audio:
+                        self.metadata["album"] = ", ".join(audio["\xa9alb"])
+                    if "\xa9day" in audio:
+                        date_value = ", ".join(audio["\xa9day"])
+                        # Try to extract just the year
+                        year_match = re.search(r"\d{4}", date_value)
+                        if year_match:
+                            self.metadata["year"] = year_match.group(0)
+                        else:
+                            self.metadata["year"] = date_value
+                    if "\xa9gen" in audio:
+                        self.metadata["genre"] = ", ".join(audio["\xa9gen"])
+                    if "trkn" in audio:
+                        track_tuple = audio["trkn"][0]
+                        self.metadata["track"] = (
+                            f"{track_tuple[0]}/{track_tuple[1]}"
+                            if len(track_tuple) > 1
+                            else str(track_tuple[0])
+                        )
 
-            # Add audio-specific information
-            if hasattr(audio, "info"):
-                self.metadata["duration"] = audio.info.length
-                self.metadata["bitrate"] = getattr(audio.info, "bitrate", 0)
-                self.metadata["sample_rate"] = getattr(audio.info, "sample_rate", 0)
+                    # Add audio-specific information
+                    if hasattr(audio, "info"):
+                        duration_seconds = int(audio.info.length)
+                        minutes = duration_seconds // 60
+                        seconds = duration_seconds % 60
+                        self.metadata["duration"] = f"{minutes}:{seconds:02d}"
+
+                        if hasattr(audio.info, "bitrate"):
+                            self.metadata["bitrate"] = f"{audio.info.bitrate // 1000} kbps"
+                        if hasattr(audio.info, "sample_rate"):
+                            self.metadata["sample_rate"] = f"{audio.info.sample_rate // 1000} kHz"
+                except Exception as e:
+                    logger.error(f"Error extracting M4A/AAC metadata from {self.file_path}: {e}")
+
+            # OGG files
+            elif ext == ".ogg":
+                try:
+                    from mutagen.oggvorbis import OggVorbis
+
+                    audio = OggVorbis(self.file_path)
+
+                    if "title" in audio:
+                        self.metadata["title"] = ", ".join(audio["title"])
+                    if "artist" in audio:
+                        self.metadata["artist"] = ", ".join(audio["artist"])
+                    if "album" in audio:
+                        self.metadata["album"] = ", ".join(audio["album"])
+                    if "date" in audio:
+                        date_value = ", ".join(audio["date"])
+                        # Try to extract just the year
+                        year_match = re.search(r"\d{4}", date_value)
+                        if year_match:
+                            self.metadata["year"] = year_match.group(0)
+                        else:
+                            self.metadata["year"] = date_value
+                    if "genre" in audio:
+                        self.metadata["genre"] = ", ".join(audio["genre"])
+                    if "tracknumber" in audio:
+                        self.metadata["track"] = ", ".join(audio["tracknumber"])
+
+                    # Add audio-specific information
+                    if hasattr(audio, "info"):
+                        duration_seconds = int(audio.info.length)
+                        minutes = duration_seconds // 60
+                        seconds = duration_seconds % 60
+                        self.metadata["duration"] = f"{minutes}:{seconds:02d}"
+
+                        if hasattr(audio.info, "bitrate"):
+                            self.metadata["bitrate"] = f"{audio.info.bitrate // 1000} kbps"
+                        if hasattr(audio.info, "sample_rate"):
+                            self.metadata["sample_rate"] = f"{audio.info.sample_rate // 1000} kHz"
+                except Exception as e:
+                    logger.error(f"Error extracting OGG metadata from {self.file_path}: {e}")
+
+            # WAV files
+            elif ext == ".wav":
+                try:
+                    from mutagen.wave import WAVE
+
+                    audio = WAVE(self.file_path)
+
+                    # WAV files typically have limited metadata
+                    # Add audio-specific information
+                    if hasattr(audio, "info"):
+                        duration_seconds = int(audio.info.length)
+                        minutes = duration_seconds // 60
+                        seconds = duration_seconds % 60
+                        self.metadata["duration"] = f"{minutes}:{seconds:02d}"
+
+                        if hasattr(audio.info, "bitrate"):
+                            self.metadata["bitrate"] = f"{audio.info.bitrate // 1000} kbps"
+                        if hasattr(audio.info, "sample_rate"):
+                            self.metadata["sample_rate"] = f"{audio.info.sample_rate // 1000} kHz"
+                except Exception as e:
+                    logger.error(f"Error extracting WAV metadata from {self.file_path}: {e}")
+
+            # Generic fallback for other audio formats
+            else:
+                try:
+                    audio = mutagen.File(self.file_path)
+                    if audio is not None:
+                        # Try to extract common metadata fields
+                        for key in audio:
+                            lower_key = key.lower()
+                            if "title" in lower_key:
+                                self.metadata["title"] = str(audio[key][0])
+                            elif "artist" in lower_key:
+                                self.metadata["artist"] = str(audio[key][0])
+                            elif "album" in lower_key:
+                                self.metadata["album"] = str(audio[key][0])
+                            elif "date" in lower_key or "year" in lower_key:
+                                date_value = str(audio[key][0])
+                                # Try to extract just the year
+                                year_match = re.search(r"\d{4}", date_value)
+                                if year_match:
+                                    self.metadata["year"] = year_match.group(0)
+                                else:
+                                    self.metadata["year"] = date_value
+                            elif "genre" in lower_key:
+                                self.metadata["genre"] = str(audio[key][0])
+                            elif "track" in lower_key:
+                                self.metadata["track"] = str(audio[key][0])
+
+                        # Add audio-specific information
+                        if hasattr(audio, "info"):
+                            duration_seconds = int(audio.info.length)
+                            minutes = duration_seconds // 60
+                            seconds = duration_seconds % 60
+                            self.metadata["duration"] = f"{minutes}:{seconds:02d}"
+
+                            if hasattr(audio.info, "bitrate"):
+                                self.metadata["bitrate"] = f"{audio.info.bitrate // 1000} kbps"
+                            if hasattr(audio.info, "sample_rate"):
+                                self.metadata["sample_rate"] = (
+                                    f"{audio.info.sample_rate // 1000} kHz"
+                                )
+                except Exception as e:
+                    logger.error(
+                        f"Error extracting generic audio metadata from {self.file_path}: {e}"
+                    )
+
+            logger.info(f"Extracted audio metadata for {self.file_path}")
 
         except Exception as e:
-            logger.error(f"Error extracting audio metadata from {self.file_path}: {e}")
+            logger.error(f"Error in audio metadata extraction for {self.file_path}: {e}")
+            # Ensure we have at least basic metadata
+            if "title" not in self.metadata:
+                self.metadata["title"] = self.file_path.stem
 
     def _extract_video_metadata(self):
         """Extract metadata from video files."""
@@ -237,15 +446,26 @@ class MediaFile:
                 placeholder_lower = placeholder.lower()
                 if placeholder_lower in metadata_lower:
                     value = metadata_lower[placeholder_lower]
-                    # Convert to string and sanitize for filesystem
-                    value_str = str(value)
-                    # Replace invalid characters with underscore
-                    value_str = re.sub(r'[<>:"/\\|?*]', "_", value_str)
-                    # Replace placeholder in the template
-                    formatted = formatted.replace(f"{{{placeholder}}}", value_str)
+                    # Check if the value is empty or None
+                    if value is None or str(value).strip() == "" or str(value).strip() == "Unknown":
+                        # If empty, replace with 'Unknown'
+                        formatted = formatted.replace(f"{{{placeholder}}}", "Unknown")
+                    else:
+                        # Convert to string and sanitize for filesystem
+                        value_str = str(value)
+                        # Replace invalid characters with underscore
+                        value_str = re.sub(r'[<>:"/\\|?*]', "_", value_str)
+                        # Replace placeholder in the template
+                        formatted = formatted.replace(f"{{{placeholder}}}", value_str)
                 else:
                     # If placeholder not found, replace with 'Unknown'
                     formatted = formatted.replace(f"{{{placeholder}}}", "Unknown")
+
+            # Clean up any double slashes that might have been created
+            formatted = re.sub(r"//+", "/", formatted)
+
+            # Ensure the path doesn't end with a period (Windows issue)
+            formatted = re.sub(r"\.$", "_", formatted)
 
             return formatted
 
@@ -264,7 +484,7 @@ class MediaOrganizer:
         self.templates = {
             "audio": "{file_type}/{artist}/{album}/{filename}",
             "video": "{file_type}/{year}/{filename}",
-            "image": "{file_type}/{creation_date}/{filename}",
+            "image": "{file_type}/{creation_year}/{creation_month_name}/{filename}",
         }
         # For backward compatibility
         self.template = "{file_type}/{artist}/{album}/{filename}"
@@ -650,7 +870,8 @@ class MediaOrganizerGUI:
         )
         self.template_entries["image"].pack(fill=tk.X, pady=2)
         ttk.Label(
-            image_template_frame, text="Example: {file_type}/{creation_date}/{filename}"
+            image_template_frame,
+            text="Example: {file_type}/{creation_year}/{creation_month_name}/{filename}",
         ).pack(anchor=tk.W)
 
         # For backward compatibility
@@ -1204,7 +1425,9 @@ class MediaOrganizerGUI:
                 # Reset templates to defaults
                 self.template_vars["audio"].set("{file_type}/{artist}/{album}/{filename}")
                 self.template_vars["video"].set("{file_type}/{year}/{filename}")
-                self.template_vars["image"].set("{file_type}/{creation_date}/{filename}")
+                self.template_vars["image"].set(
+                    "{file_type}/{creation_year}/{creation_month_name}/{filename}"
+                )
 
                 # For backward compatibility
                 self.template_var.set("{file_type}/{artist}/{album}/{filename}")
@@ -1309,6 +1532,9 @@ class MediaOrganizerGUI:
             ("{file_type}", "Type of file (audio, video, image)"),
             ("{size}", "File size in bytes"),
             ("{creation_date}", "File creation date (YYYY-MM-DD)"),
+            ("{creation_year}", "Year of file creation (YYYY)"),
+            ("{creation_month}", "Month of file creation (01-12)"),
+            ("{creation_month_name}", "Month name of file creation (January, February, etc.)"),
         ]
 
         for i, (placeholder, description) in enumerate(common_placeholders):
@@ -1377,8 +1603,12 @@ class MediaOrganizerGUI:
                 "Organizes music by year, then artist-title",
             ),
             (
-                "{file_type}/{creation_date}/{filename}",
-                "Organizes by file type, then creation date",
+                "{file_type}/{creation_year}/{creation_month_name}/{filename}",
+                "Organizes by file type, year, and month",
+            ),
+            (
+                "Photos/{creation_year}/{creation_month}/{filename}",
+                "Organizes photos by year and month number",
             ),
         ]
 

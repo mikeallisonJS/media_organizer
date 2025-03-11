@@ -107,7 +107,7 @@ The application uses templates with placeholders to determine how files should b
 
 ### Available Placeholders
 
-- **Common**: `{filename}`, `{extension}`, `{file_type}`, `{size}`, `{creation_date}`
+- **Common**: `{filename}`, `{extension}`, `{file_type}`, `{size}`, `{creation_date}`, `{creation_year}`, `{creation_month}`, `{creation_month_name}`
 - **Audio**: `{title}`, `{artist}`, `{album}`, `{year}`, `{genre}`, `{track}`, `{duration}`, `{bitrate}`
 - **Image**: `{width}`, `{height}`, `{format}`, `{camera_make}`, `{camera_model}`, `{date_taken}`
 
@@ -115,7 +115,8 @@ The application uses templates with placeholders to determine how files should b
 
 - `{file_type}/{artist}/{album}/{filename}` - Organizes by file type, then artist, then album
 - `Music/{year}/{artist} - {title}.{extension}` - Organizes music by year, then artist-title
-- `{file_type}/{creation_date}/{filename}` - Organizes by file type, then creation date
+- `{file_type}/{creation_year}/{creation_month_name}/{filename}` - Organizes by file type, year, and month name
+- `Photos/{creation_year}/{creation_month}/{filename}` - Organizes photos by year and month number
 
 ## Notes
 
