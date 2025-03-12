@@ -114,9 +114,9 @@ class MediaFile:
             # MP3 files
             if ext == ".mp3":
                 try:
-                audio = MP3(self.file_path)
-                if audio.tags:
-                    id3 = ID3(self.file_path)
+                    audio = MP3(self.file_path)
+                    if audio.tags:
+                        id3 = ID3(self.file_path)
                         if "TIT2" in id3:
                             self.metadata["title"] = str(id3["TIT2"])
                         if "TPE1" in id3:
@@ -130,24 +130,24 @@ class MediaFile:
                         if "TRCK" in id3:
                             self.metadata["track"] = str(id3["TRCK"])
 
-                    # Add audio-specific information
-                    if hasattr(audio, "info"):
-                        duration_seconds = int(audio.info.length)
-                        minutes = duration_seconds // 60
-                        seconds = duration_seconds % 60
-                        self.metadata["duration"] = f"{minutes}:{seconds:02d}"
+                        # Add audio-specific information
+                        if hasattr(audio, "info"):
+                            duration_seconds = int(audio.info.length)
+                            minutes = duration_seconds // 60
+                            seconds = duration_seconds % 60
+                            self.metadata["duration"] = f"{minutes}:{seconds:02d}"
 
-                        if hasattr(audio.info, "bitrate"):
-                            self.metadata["bitrate"] = f"{audio.info.bitrate // 1000} kbps"
-                        if hasattr(audio.info, "sample_rate"):
-                            self.metadata["sample_rate"] = f"{audio.info.sample_rate // 1000} kHz"
+                            if hasattr(audio.info, "bitrate"):
+                                self.metadata["bitrate"] = f"{audio.info.bitrate // 1000} kbps"
+                            if hasattr(audio.info, "sample_rate"):
+                                self.metadata["sample_rate"] = f"{audio.info.sample_rate // 1000} kHz"
                 except Exception as e:
                     logger.error(f"Error extracting MP3 metadata from {self.file_path}: {e}")
 
             # FLAC files
             elif ext == ".flac":
                 try:
-                audio = FLAC(self.file_path)
+                    audio = FLAC(self.file_path)
                     if "title" in audio:
                         self.metadata["title"] = ", ".join(audio["title"])
                     if "artist" in audio:
@@ -184,7 +184,7 @@ class MediaFile:
             # M4A/AAC files
             elif ext in [".m4a", ".aac"]:
                 try:
-                audio = MP4(self.file_path)
+                    audio = MP4(self.file_path)
                     if "\xa9nam" in audio:
                         self.metadata["title"] = ", ".join(audio["\xa9nam"])
                     if "\xa9ART" in audio:
@@ -209,7 +209,7 @@ class MediaFile:
                             else str(track_tuple[0])
                         )
                 
-            # Add audio-specific information
+                    # Add audio-specific information
                     if hasattr(audio, "info"):
                         duration_seconds = int(audio.info.length)
                         minutes = duration_seconds // 60
@@ -220,7 +220,7 @@ class MediaFile:
                             self.metadata["bitrate"] = f"{audio.info.bitrate // 1000} kbps"
                         if hasattr(audio.info, "sample_rate"):
                             self.metadata["sample_rate"] = f"{audio.info.sample_rate // 1000} kHz"
-        except Exception as e:
+                except Exception as e:
                     logger.error(f"Error extracting M4A/AAC metadata from {self.file_path}: {e}")
 
             # OGG files
@@ -624,11 +624,11 @@ class MediaFile:
                         # If empty, replace with 'Unknown'
                         formatted = formatted.replace(f"{{{placeholder}}}", "Unknown")
                     else:
-                    # Convert to string and sanitize for filesystem
-                    value_str = str(value)
-                    # Replace invalid characters with underscore
+                        # Convert to string and sanitize for filesystem
+                        value_str = str(value)
+                        # Replace invalid characters with underscore
                         value_str = re.sub(r'[<>:"/\\|?*]', "_", value_str)
-                    # Replace placeholder in the template
+                        # Replace placeholder in the template
                         formatted = formatted.replace(f"{{{placeholder}}}", value_str)
                 else:
                     # If placeholder not found, replace with 'Unknown'
@@ -690,7 +690,7 @@ class MediaOrganizer:
             self.templates[media_type] = template
             # Also update the default template if it's audio (for backward compatibility)
             if media_type == "audio":
-        self.template = template
+                self.template = template
         else:
             # For backward compatibility
             self.template = template
@@ -825,8 +825,8 @@ class MediaOrganizer:
                     
                     # Copy or move the file based on operation mode
                     if self.operation_mode == "copy":
-                    shutil.copy2(file_path, dest_path)
-                    logger.info(f"Copied {file_path} to {dest_path}")
+                        shutil.copy2(file_path, dest_path)
+                        logger.info(f"Copied {file_path} to {dest_path}")
                     else:  # move mode
                         shutil.move(file_path, dest_path)
                         logger.info(f"Moved {file_path} to {dest_path}")
@@ -1644,7 +1644,7 @@ class MediaOrganizerGUI:
             self._clear_preview()
             # Auto-save settings if enabled
             if getattr(self, "auto_save_enabled", True):
-            self._save_settings()
+                self._save_settings()
             # Auto-generate preview
             self._auto_generate_preview()
     
@@ -1658,7 +1658,7 @@ class MediaOrganizerGUI:
             self._clear_preview()
             # Auto-save settings if enabled
             if getattr(self, "auto_save_enabled", True):
-            self._save_settings()
+                self._save_settings()
             # Auto-generate preview
             self._auto_generate_preview()
             
@@ -1693,7 +1693,7 @@ class MediaOrganizerGUI:
             var.set(value)
         # Auto-save settings if enabled
         if getattr(self, "auto_save_enabled", True):
-        self._save_settings()
+            self._save_settings()
         # Auto-generate preview
         self._auto_generate_preview()
     
@@ -1704,7 +1704,7 @@ class MediaOrganizerGUI:
             getattr(self, f"{file_type}_all_var").set(all_selected)
         # Auto-save settings if enabled
         if getattr(self, "auto_save_enabled", True):
-        self._save_settings()
+            self._save_settings()
         # Auto-generate preview
         self._auto_generate_preview()
     
@@ -1730,18 +1730,31 @@ class MediaOrganizerGUI:
             "image": self.template_vars["image"].get().strip(),
             "ebook": self.template_vars["ebook"].get().strip(),
         }
-        
+
         if not source_dir:
             messagebox.showerror("Error", "Please select a source directory.")
             return
-            
+
         if not all(templates.values()):
             messagebox.showerror("Error", "Please provide templates for all media types.")
             return
-            
+
         # Clear previous preview
         self._clear_preview()
         
+        # Update status to show preview is generating
+        self.status_var.set("Generating preview...")
+        self.root.update_idletasks()
+        
+        # Start preview generation in a separate thread
+        threading.Thread(
+            target=self._generate_preview_thread,
+            args=(source_dir, output_dir, templates),
+            daemon=True
+        ).start()
+
+    def _generate_preview_thread(self, source_dir, output_dir, templates):
+        """Generate preview in a separate thread to keep UI responsive."""
         try:
             # Configure organizer for preview
             self.organizer.set_source_dir(source_dir)
@@ -1751,20 +1764,14 @@ class MediaOrganizerGUI:
             # Set templates for each media type
             for media_type, template in templates.items():
                 self.organizer.set_template(template, media_type)
-            
-            # Find media files (limit to 100 for preview)
-            self.status_var.set("Generating preview...")
-            self.root.update_idletasks()
-            
+
             # Get selected extensions
             selected_extensions = self._get_selected_extensions()
             if not selected_extensions:
-                messagebox.showinfo(
-                    "Info", "No file types selected. Please select at least one file type."
-                )
-                self.status_var.set("Ready")
+                # Update UI in the main thread
+                self.root.after(0, lambda: self._update_preview_status("No file types selected. Please select at least one file type."))
                 return
-                
+
             # Check if destination is inside source to avoid processing files in the destination
             source_path = Path(source_dir)
             is_dest_in_source = False
@@ -1784,7 +1791,7 @@ class MediaOrganizerGUI:
             # Find up to 100 files for preview
             preview_files = []
             count = 0
-            
+
             for file_path in source_path.rglob("*"):
                 # Skip files in the destination directory if it's inside the source
                 if is_dest_in_source and output_dir and file_path.is_file():
@@ -1801,6 +1808,9 @@ class MediaOrganizerGUI:
                     count += 1
                     if count >= 100:  # Limit to 100 files for preview
                         break
+
+            # Prepare preview data
+            preview_data = []
             
             # Generate preview for each file
             for file_path in preview_files:
@@ -1810,10 +1820,10 @@ class MediaOrganizerGUI:
 
                     # Get the appropriate template for this file type
                     template = self.organizer.get_template(media_file.file_type)
-                    
+
                     # Generate destination path
                     rel_path = media_file.get_formatted_path(template)
-                    
+
                     # Get source path for display
                     if getattr(self, "show_full_paths", False):
                         display_source = str(file_path)
@@ -1822,25 +1832,41 @@ class MediaOrganizerGUI:
                         try:
                             display_source = str(file_path.relative_to(source_path))
                             display_dest = rel_path
-                    except ValueError:
+                        except ValueError:
                             display_source = str(file_path)
                             display_dest = str(self.organizer.output_dir / rel_path)
                     
-                    # Insert into treeview
-                    self.preview_tree.insert("", "end", values=(display_source, display_dest))
-                    
+                    # Add to preview data
+                    preview_data.append((display_source, display_dest))
+
                 except Exception as e:
                     logger.error(f"Error generating preview for {file_path}: {e}")
-            
-            if count == 0:
-                self.status_var.set("No media files found in the source directory.")
-            else:
-                self.status_var.set(f"Preview generated for {count} files.")
-                
+
+            # Update UI in the main thread
+            self.root.after(0, lambda: self._update_preview_results(preview_data, count))
+
         except Exception as e:
             logger.error(f"Error generating preview: {e}")
-            messagebox.showerror("Error", f"Failed to generate preview: {str(e)}")
-            self.status_var.set("Preview generation failed.")
+            # Update UI in the main thread
+            self.root.after(0, lambda: self._update_preview_status(f"Preview generation failed: {str(e)}", error=True))
+
+    def _update_preview_results(self, preview_data, count):
+        """Update the preview treeview with results from the preview thread."""
+        # Insert preview data into treeview
+        for display_source, display_dest in preview_data:
+            self.preview_tree.insert("", "end", values=(display_source, display_dest))
+
+        # Update status
+        if count == 0:
+            self.status_var.set("No media files found in the source directory.")
+        else:
+            self.status_var.set(f"Preview generated for {count} files.")
+
+    def _update_preview_status(self, message, error=False):
+        """Update the preview status with a message."""
+        self.status_var.set(message)
+        if error:
+            messagebox.showerror("Error", message)
     
     def _start_organization(self, mode="copy"):
         """Start the organization process with the specified mode (copy or move)."""
@@ -2005,8 +2031,8 @@ class MediaOrganizerGUI:
                         
                         # Copy or move the file based on operation mode
                         if self.organizer.operation_mode == "copy":
-                        shutil.copy2(file_path, dest_path)
-                        logger.info(f"Copied {file_path} to {dest_path}")
+                            shutil.copy2(file_path, dest_path)
+                            logger.info(f"Copied {file_path} to {dest_path}")
                         else:  # move mode
                             shutil.move(file_path, dest_path)
                             logger.info(f"Moved {file_path} to {dest_path}")
@@ -2170,22 +2196,22 @@ class MediaOrganizerGUI:
 
                 # For backward compatibility
                 self.template_var.set("{file_type}/{artist}/{album}/{filename}")
-                
+
                 # Reset extension checkboxes to checked
                 for file_type in ["audio", "video", "image", "ebook"]:
                     getattr(self, f"{file_type}_all_var").set(True)
                     self._toggle_all_extensions(file_type)
-                
+
                 # Clear preview
                 self._clear_preview()
-                
+
                 # Delete config file if it exists
                 if self.config_file.exists():
                     self.config_file.unlink()
                     logger.info(f"Settings file deleted: {self.config_file}")
-                
+
                 self.status_var.set("Settings reset to defaults")
-                
+
             except Exception as e:
                 logger.error(f"Error resetting settings: {e}")
                 messagebox.showerror("Error", f"Failed to reset settings: {str(e)}")
@@ -2209,8 +2235,8 @@ class MediaOrganizerGUI:
         # Auto-save settings after a short delay if enabled
         if getattr(self, "auto_save_enabled", True):
             if hasattr(self, "_template_timer"):
-            self.root.after_cancel(self._template_timer)
-        self._template_timer = self.root.after(1000, self._save_settings)
+                self.root.after_cancel(self._template_timer)
+            self._template_timer = self.root.after(1000, self._save_settings)
         
         # Auto-generate preview after a short delay
         if hasattr(self, "_preview_timer"):

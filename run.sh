@@ -7,14 +7,14 @@ if ! command -v python3 &> /dev/null; then
 fi
 
 # Check if virtual environment exists, create if not
-if [ ! -d "media_organizer_venv" ]; then
+if [ ! -d "venv" ]; then
     echo "Creating virtual environment..."
-    python3 -m venv media_organizer_venv
+    python3 -m venv venv
 fi
 
 # Activate virtual environment and install dependencies
 echo "Activating virtual environment and installing dependencies..."
-source media_organizer_venv/bin/activate
+source venv/bin/activate
 pip install -r requirements.txt
 
 # Check if Tkinter is installed

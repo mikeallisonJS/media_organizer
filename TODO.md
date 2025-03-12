@@ -4,7 +4,8 @@
 [X] Change Start Organinizatino button into 2 buttons: Copy and Move
 [X] Make sure Bottom Button and Progress Bar are always visible
 [X] Prevent source from reading from the destination
-[] Make the preview non blocking
-[] Move media_organizer_venv to venv
+[X] Make the preview non blocking
+[X] Move media_organizer_venv to venv
 [] Make Mac & Windows executables
 [] Add a purchase button in the Menubar and a nag screen
+[] Add an analyze button
