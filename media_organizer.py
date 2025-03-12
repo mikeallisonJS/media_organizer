@@ -1083,8 +1083,8 @@ class MediaOrganizerGUI:
         """Initialize the GUI."""
         self.root = root
         self.root.title("Media Organizer")
-        self.root.geometry("800x700")
-        self.root.minsize(800, 700)
+        self.root.geometry("800x800")  # Increase default height
+        self.root.minsize(800, 800)    # Increase minimum height
 
         # Create menubar
         self._create_menubar()
@@ -1151,8 +1151,56 @@ class MediaOrganizerGUI:
 
     def _create_widgets(self):
         """Create the GUI widgets."""
+        # Create a main container frame with three sections
+        # 1. Bottom section for progress and buttons (fixed height, packed first)
+        # 2. Top section for inputs (fixed height)
+        # 3. Middle section for preview (expandable)
+        
+        # Bottom section - fixed height for progress and buttons
+        # Pack this FIRST to ensure it's always at the bottom and visible
+        bottom_frame = ttk.Frame(self.main_frame)
+        bottom_frame.pack(fill=tk.X, side=tk.BOTTOM, pady=2)
+        
+        # Set a minimum height for the bottom frame to ensure it's always visible
+        bottom_frame.pack_propagate(False)  # Prevent the frame from shrinking
+        bottom_frame.configure(height=150)  # Set minimum height
+        
+        # Progress frame
+        progress_frame = ttk.LabelFrame(bottom_frame, text="Progress", padding=5)
+        progress_frame.pack(fill=tk.X, pady=2)
+
+        self.progress_var = tk.DoubleVar()
+        self.progress_bar = ttk.Progressbar(progress_frame, variable=self.progress_var, maximum=100)
+        self.progress_bar.pack(fill=tk.X, pady=2)
+
+        self.status_var = tk.StringVar(value="Ready")
+        status_label = ttk.Label(progress_frame, textvariable=self.status_var)
+        status_label.pack(anchor=tk.W)
+
+        self.file_var = tk.StringVar(value="")
+        file_label = ttk.Label(progress_frame, textvariable=self.file_var)
+        file_label.pack(anchor=tk.W)
+
+        # Buttons frame
+        buttons_frame = ttk.Frame(bottom_frame)
+        buttons_frame.pack(fill=tk.X, pady=3)
+
+        self.start_button = ttk.Button(
+            buttons_frame, text="Start Organization", command=self._start_organization
+        )
+        self.start_button.pack(side=tk.LEFT, padx=5)
+
+        self.stop_button = ttk.Button(
+            buttons_frame, text="Stop", command=self._stop_organization, state=tk.DISABLED
+        )
+        self.stop_button.pack(side=tk.LEFT, padx=5)
+        
+        # Top section frame - fixed height
+        top_frame = ttk.Frame(self.main_frame)
+        top_frame.pack(fill=tk.X, pady=2, side=tk.TOP)
+        
         # Create a frame to hold both directory selection frames
-        directories_frame = ttk.Frame(self.main_frame)
+        directories_frame = ttk.Frame(top_frame)
         directories_frame.pack(fill=tk.X, pady=2)
 
         # Source directory selection
@@ -1176,7 +1224,7 @@ class MediaOrganizerGUI:
         output_button.pack(side=tk.RIGHT)
 
         # Extension filters
-        extensions_frame = ttk.LabelFrame(self.main_frame, text="File Type Filters", padding=5)
+        extensions_frame = ttk.LabelFrame(top_frame, text="File Type Filters", padding=5)
         extensions_frame.pack(fill=tk.X, pady=2)
 
         # Create a frame for each file type category
@@ -1304,7 +1352,7 @@ class MediaOrganizerGUI:
             cb.grid(row=i // 2, column=i % 2, sticky=tk.W, padx=5)
 
         # Template configuration
-        template_frame = ttk.LabelFrame(self.main_frame, text="Organization Templates", padding=5)
+        template_frame = ttk.LabelFrame(top_frame, text="Organization Templates", padding=5)
         template_frame.pack(fill=tk.X, pady=2)
 
         template_header_frame = ttk.Frame(template_frame)
@@ -1406,9 +1454,13 @@ class MediaOrganizerGUI:
         self.template_var = self.template_vars["audio"]
         self.template_entry = self.template_entries["audio"]
 
+        # Middle section - expandable preview
+        middle_frame = ttk.Frame(self.main_frame)
+        middle_frame.pack(fill=tk.BOTH, expand=True, pady=2, side=tk.TOP)
+        
         # Preview frame
         preview_frame = ttk.LabelFrame(
-            self.main_frame, text="Preview", padding=5
+            middle_frame, text="Preview", padding=5
         )
         preview_frame.pack(fill=tk.BOTH, expand=True, pady=2)
 
@@ -1450,36 +1502,6 @@ class MediaOrganizerGUI:
             yscrollcommand=preview_scrollbar_y.set,
             xscrollcommand=preview_scrollbar_x.set
         )
-
-        # Progress frame
-        progress_frame = ttk.LabelFrame(self.main_frame, text="Progress", padding=5)
-        progress_frame.pack(fill=tk.X, pady=2)
-
-        self.progress_var = tk.DoubleVar()
-        self.progress_bar = ttk.Progressbar(progress_frame, variable=self.progress_var, maximum=100)
-        self.progress_bar.pack(fill=tk.X, pady=2)
-
-        self.status_var = tk.StringVar(value="Ready")
-        status_label = ttk.Label(progress_frame, textvariable=self.status_var)
-        status_label.pack(anchor=tk.W)
-
-        self.file_var = tk.StringVar(value="")
-        file_label = ttk.Label(progress_frame, textvariable=self.file_var)
-        file_label.pack(anchor=tk.W)
-
-        # Buttons frame
-        buttons_frame = ttk.Frame(self.main_frame)
-        buttons_frame.pack(fill=tk.X, pady=3)
-
-        self.start_button = ttk.Button(
-            buttons_frame, text="Start Organization", command=self._start_organization
-        )
-        self.start_button.pack(side=tk.LEFT, padx=5)
-
-        self.stop_button = ttk.Button(
-            buttons_frame, text="Stop", command=self._stop_organization, state=tk.DISABLED
-        )
-        self.stop_button.pack(side=tk.LEFT, padx=5)
 
     def _browse_source(self):
         """Browse for source directory."""
