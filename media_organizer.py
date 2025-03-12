@@ -878,8 +878,8 @@ class PreferencesDialog:
         """Initialize the preferences dialog."""
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("Preferences")
-        self.dialog.geometry("500x400")
-        self.dialog.minsize(500, 400)
+        self.dialog.geometry("600x500")
+        self.dialog.minsize(600, 500)
         self.dialog.transient(parent)  # Make it a modal dialog
         self.dialog.grab_set()  # Make it modal
         
@@ -1010,7 +1010,7 @@ class PreferencesDialog:
         SUPPORTED_EXTENSIONS = new_extensions
         
         # Update the main window's extension checkboxes
-        self.app._update_extension_selection()
+        self.app._update_extension_checkboxes()
         
         # Save settings to file
         self.app._save_settings()
@@ -1025,10 +1025,7 @@ class PreferencesDialog:
         """Update the extension checkboxes in the main window based on SUPPORTED_EXTENSIONS."""
         # Clear existing extension frames
         for frame in self.main_frame.winfo_children():
-            if isinstance(frame, ttk.LabelFrame) and frame.winfo_children() and \
-               isinstance(frame.winfo_children()[0], ttk.Frame) and \
-               frame.winfo_children()[0].winfo_children() and \
-               any(child.winfo_name().endswith('frame') for child in frame.winfo_children()[0].winfo_children()):
+            if isinstance(frame, ttk.LabelFrame) and frame.winfo_text() == "File Type Filters":
                 frame.destroy()
 
         # Recreate extension filters frame
