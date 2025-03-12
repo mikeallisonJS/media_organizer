@@ -667,6 +667,7 @@ class MediaOrganizer:
         self.current_file = ""
         self.is_running = False
         self.stop_requested = False
+        self.operation_mode = "copy"  # Default to copy mode
 
     def set_source_dir(self, directory):
         """Set the source directory."""
@@ -773,6 +774,12 @@ class MediaOrganizer:
 
         return media_files
 
+    def set_operation_mode(self, mode):
+        """Set the operation mode (copy or move)."""
+        if mode not in ["copy", "move"]:
+            raise ValueError("Operation mode must be 'copy' or 'move'")
+        self.operation_mode = mode
+
     def organize_files(self, callback=None):
         """
         Organize media files based on their metadata and the template.
@@ -816,9 +823,13 @@ class MediaOrganizer:
                     # Create destination directory if it doesn't exist
                     os.makedirs(dest_path.parent, exist_ok=True)
 
-                    # Copy the file
-                    shutil.copy2(file_path, dest_path)
-                    logger.info(f"Copied {file_path} to {dest_path}")
+                    # Copy or move the file based on operation mode
+                    if self.operation_mode == "copy":
+                        shutil.copy2(file_path, dest_path)
+                        logger.info(f"Copied {file_path} to {dest_path}")
+                    else:  # move mode
+                        shutil.move(file_path, dest_path)
+                        logger.info(f"Moved {file_path} to {dest_path}")
 
                     # Update progress
                     self.files_processed += 1
@@ -828,7 +839,8 @@ class MediaOrganizer:
                 except Exception as e:
                     logger.error(f"Error processing file {file_path}: {e}")
 
-            logger.info(f"Organization complete. Processed {self.files_processed} files.")
+            operation_name = "copy" if self.operation_mode == "copy" else "move"
+            logger.info(f"{operation_name.capitalize()} operation complete. Processed {self.files_processed} files.")
 
         except Exception as e:
             logger.error(f"Error during organization: {e}")
@@ -842,274 +854,351 @@ class MediaOrganizer:
         """Stop the organization process."""
         self.stop_requested = True
 
+    def _organization_complete(self):
+        """Handle organization completion."""
+        self.start_button.config(state=tk.NORMAL)
+        self.stop_button.config(state=tk.DISABLED)
 
-class LogWindow:
-    """Separate window for displaying logs."""
-    
-    def __init__(self, parent):
-        """Initialize the log window."""
-        self.window = tk.Toplevel(parent)
-        self.window.title("Media Organizer Logs")
-        self.window.geometry("600x400")
-        self.window.minsize(400, 300)
+        operation_name = "copied" if self.operation_mode == "copy" else "moved"
         
-        # Configure the window to be hidden instead of destroyed when closed
-        self.window.protocol("WM_DELETE_WINDOW", self.hide)
-        
-        # Create the log text widget
-        self.log_text = tk.Text(self.window, wrap=tk.WORD)
-        self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        
-        # Add scrollbar
-        scrollbar = ttk.Scrollbar(self.window, command=self.log_text.yview)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-        self.log_text.config(yscrollcommand=scrollbar.set)
-        
-        # Configure logging to text widget
-        self._setup_text_logging()
-        
-        # Initially hide the window
-        self.hide()
-    
-    def _setup_text_logging(self):
-        """Set up logging to the text widget."""
-        class TextHandler(logging.Handler):
-            def __init__(self, text_widget):
-                logging.Handler.__init__(self)
-                self.text_widget = text_widget
-
-            def emit(self, record):
-                msg = self.format(record)
-
-                def append():
-                    self.text_widget.configure(state="normal")
-                    self.text_widget.insert(tk.END, msg + "\n")
-                    self.text_widget.see(tk.END)
-                    self.text_widget.configure(state="disabled")
-
-                # Schedule the append operation on the GUI thread
-                self.text_widget.after(0, append)
-
-        text_handler = TextHandler(self.log_text)
-        text_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
-        logger.addHandler(text_handler)
-
-        # Disable editing
-        self.log_text.configure(state="disabled")
-    
-    def show(self):
-        """Show the log window."""
-        self.window.deiconify()
-        self.window.lift()
-    
-    def hide(self):
-        """Hide the log window."""
-        self.window.withdraw()
-
-
-class PreferencesDialog:
-    """Dialog for managing application preferences."""
-    
-    def __init__(self, parent, app):
-        """Initialize the preferences dialog."""
-        self.dialog = tk.Toplevel(parent)
-        self.dialog.title("Preferences")
-        self.dialog.geometry("600x500")
-        self.dialog.minsize(600, 500)
-        self.dialog.transient(parent)  # Make it a modal dialog
-        self.dialog.grab_set()  # Make it modal
-        
-        # Store reference to main app
-        self.app = app
-        
-        # Center the window
-        self.dialog.update_idletasks()
-        width = self.dialog.winfo_width()
-        height = self.dialog.winfo_height()
-        x = (self.dialog.winfo_screenwidth() // 2) - (width // 2)
-        y = (self.dialog.winfo_screenheight() // 2) - (height // 2)
-        self.dialog.geometry(f"{width}x{height}+{x}+{y}")
-        
-        # Create the main content frame
-        self.content_frame = ttk.Frame(self.dialog, padding=10)
-        self.content_frame.pack(fill=tk.BOTH, expand=True)
-        
-        # Create notebook for tabs
-        self.notebook = ttk.Notebook(self.content_frame)
-        self.notebook.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
-        
-        # Create General tab
-        self.general_frame = ttk.Frame(self.notebook, padding=10)
-        self.notebook.add(self.general_frame, text="General")
-        
-        # Auto-preview option
-        self.auto_preview_var = tk.BooleanVar(value=self.app.auto_preview_enabled)
-        auto_preview_cb = ttk.Checkbutton(
-            self.general_frame,
-            text="Automatically generate preview when settings change",
-            variable=self.auto_preview_var
+        # Show completion message
+        messagebox.showinfo(
+            "Complete",
+            f"Organization complete!\n\n{operation_name.capitalize()} {self.files_processed} files.",
         )
-        auto_preview_cb.pack(anchor=tk.W, pady=5)
-        
-        # Auto-save option
-        self.auto_save_var = tk.BooleanVar(value=getattr(self.app, 'auto_save_enabled', True))
-        auto_save_cb = ttk.Checkbutton(
-            self.general_frame,
-            text="Automatically save settings when inputs change",
-            variable=self.auto_save_var
-        )
-        auto_save_cb.pack(anchor=tk.W, pady=5)
-        
-        # Full path display option
-        self.show_full_paths_var = tk.BooleanVar(value=getattr(self.app, 'show_full_paths', False))
-        full_paths_cb = ttk.Checkbutton(
-            self.general_frame,
-            text="Show full file paths in preview",
-            variable=self.show_full_paths_var
-        )
-        full_paths_cb.pack(anchor=tk.W, pady=5)
-        
-        # Create File Types tab
-        self.file_types_frame = ttk.Frame(self.notebook, padding=10)
-        self.notebook.add(self.file_types_frame, text="File Types")
-        
-        # Create sub-notebook for file type tabs
-        self.file_types_notebook = ttk.Notebook(self.file_types_frame)
-        self.file_types_notebook.pack(fill=tk.BOTH, expand=True)
-        
-        # Create text variables for extensions
-        self.extension_texts = {}
-        
-        # Create sub-tabs for each media type
-        for media_type in ["audio", "video", "image", "ebook"]:
-            frame = ttk.Frame(self.file_types_notebook, padding=10)
-            self.file_types_notebook.add(frame, text=media_type.title())
-            
-            # Add description label
-            ttk.Label(
-                frame,
-                text=f"Enter file extensions for {media_type} files (one per line, with or without dot):",
-                wraplength=400
-            ).pack(anchor=tk.W, pady=(0, 5))
-            
-            # Create text widget with scrollbar for extensions
-            text_frame = ttk.Frame(frame)
-            text_frame.pack(fill=tk.BOTH, expand=True)
-            
-            text_widget = tk.Text(text_frame, height=10, width=40)
-            scrollbar = ttk.Scrollbar(text_frame, orient="vertical", command=text_widget.yview)
-            text_widget.configure(yscrollcommand=scrollbar.set)
-            
-            text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-            
-            # Get current extensions and format them
-            current_extensions = [ext.lstrip(".") for ext in SUPPORTED_EXTENSIONS[media_type]]
-            text_widget.insert("1.0", "\n".join(current_extensions))
-            
-            self.extension_texts[media_type] = text_widget
-        
-        # Create buttons frame
-        buttons_frame = ttk.Frame(self.content_frame)
-        buttons_frame.pack(fill=tk.X, pady=(0, 10))
-        
-        # Add Save and Cancel buttons
-        save_button = ttk.Button(buttons_frame, text="Save", command=self._save_preferences)
-        save_button.pack(side=tk.RIGHT, padx=5)
-        
-        cancel_button = ttk.Button(buttons_frame, text="Cancel", command=self.dialog.destroy)
-        cancel_button.pack(side=tk.RIGHT, padx=5)
-    
-    def _save_preferences(self):
-        """Save preferences and update the main application."""
-        # Update auto-preview setting
-        self.app.auto_preview_enabled = self.auto_preview_var.get()
-        
-        # Update auto-save setting
-        self.app.auto_save_enabled = self.auto_save_var.get()
-        
-        # Update full paths setting
-        self.app.show_full_paths = self.show_full_paths_var.get()
-        
-        # Update extensions
-        new_extensions = {}
-        for media_type, text_widget in self.extension_texts.items():
-            # Get extensions from text widget
-            extensions = text_widget.get("1.0", "end-1c").split("\n")
-            # Clean up extensions (remove empty lines, add dot if missing)
-            extensions = [ext.strip() for ext in extensions if ext.strip()]
-            extensions = [ext if ext.startswith(".") else f".{ext}" for ext in extensions]
-            new_extensions[media_type] = extensions
-        
-        # Update SUPPORTED_EXTENSIONS
-        global SUPPORTED_EXTENSIONS
-        SUPPORTED_EXTENSIONS = new_extensions
-        
-        # Update the main window's extension checkboxes
-        self.app._update_extension_checkboxes()
-        
-        # Save settings to file
-        self.app._save_settings()
-        
-        # Generate preview if auto-preview is enabled
-        self.app._auto_generate_preview()
-        
-        # Close the dialog
-        self.dialog.destroy()
 
-    def _update_extension_checkboxes(self):
-        """Update the extension checkboxes in the main window based on SUPPORTED_EXTENSIONS."""
-        # Clear existing extension frames
-        for frame in self.main_frame.winfo_children():
-            if isinstance(frame, ttk.LabelFrame) and frame.winfo_text() == "File Type Filters":
-                frame.destroy()
+    def _on_close(self):
+        """Handle window close event."""
+        # Save settings before closing
+        self._save_settings()
+        # Close the window
+        self.root.destroy()
 
-        # Recreate extension filters frame
-        extensions_frame = ttk.LabelFrame(self.main_frame, text="File Type Filters", padding=5)
-        extensions_frame.pack(fill=tk.X, pady=2)
+    def _save_settings(self):
+        """Save user settings to a configuration file."""
+        try:
+            # Collect settings
+            settings = {
+                "source_dir": self.source_entry.get().strip(),
+                "output_dir": self.output_entry.get().strip(),
+                "templates": {
+                    "audio": self.template_vars["audio"].get().strip(),
+                    "video": self.template_vars["video"].get().strip(),
+                    "image": self.template_vars["image"].get().strip(),
+                    "ebook": self.template_vars["ebook"].get().strip(),
+                },
+                # For backward compatibility
+                "template": self.template_vars["audio"].get().strip(),
+                "extensions": {
+                    "audio": {ext: var.get() for ext, var in self.extension_vars["audio"].items()},
+                    "video": {ext: var.get() for ext, var in self.extension_vars["video"].items()},
+                    "image": {ext: var.get() for ext, var in self.extension_vars["image"].items()},
+                    "ebook": {ext: var.get() for ext, var in self.extension_vars["ebook"].items()},
+                },
+                "show_full_paths": getattr(self, "show_full_paths", False),
+                "auto_save_enabled": getattr(self, "auto_save_enabled", True),
+                "auto_preview_enabled": getattr(self, "auto_preview_enabled", True),
+                "operation_mode": self.operation_mode,
+            }
 
-        # Create a frame for each file type category
-        file_types_frame = ttk.Frame(extensions_frame)
-        file_types_frame.pack(fill=tk.X, pady=2)
+            # Save to file
+            with open(self.config_file, "w") as f:
+                json.dump(settings, f)
 
-        # Clear existing extension variables
-        self.extension_vars = {"audio": {}, "video": {}, "image": {}, "ebook": {}}
+            logger.info(f"Settings saved to {self.config_file}")
+        except Exception as e:
+            logger.error(f"Error saving settings: {e}")
 
-        # Recreate frames for each media type
-        for media_type, title in [("audio", "Audio"), ("video", "Video"), 
-                                ("image", "Image"), ("ebook", "eBook")]:
-            type_frame = ttk.LabelFrame(file_types_frame, text=title)
-            type_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
+    def _load_settings(self):
+        """Load user settings from the configuration file."""
+        try:
+            if self.config_file.exists():
+                with open(self.config_file, "r") as f:
+                    settings = json.load(f)
 
-            # Create "Select All" checkbox
-            all_var = tk.BooleanVar(value=True)
-            setattr(self, f"{media_type}_all_var", all_var)
-            all_cb = ttk.Checkbutton(
-                type_frame,
-                text=f"All {title}",
-                variable=all_var,
-                command=lambda t=media_type: self._toggle_all_extensions(t),
-            )
-            all_cb.pack(anchor=tk.W)
+                # Apply settings
+                if "source_dir" in settings and settings["source_dir"]:
+                    self.source_entry.delete(0, tk.END)
+                    self.source_entry.insert(0, settings["source_dir"])
 
-            # Create individual checkboxes for extensions
-            extensions_frame = ttk.Frame(type_frame)
-            extensions_frame.pack(fill=tk.X, padx=10)
+                if "output_dir" in settings and settings["output_dir"]:
+                    self.output_entry.delete(0, tk.END)
+                    self.output_entry.insert(0, settings["output_dir"])
 
-            for i, ext in enumerate(SUPPORTED_EXTENSIONS[media_type]):
-                ext_name = ext.lstrip(".")
-                var = tk.BooleanVar(value=True)
-                self.extension_vars[media_type][ext] = var
-                cb = ttk.Checkbutton(
-                    extensions_frame,
-                    text=ext_name,
-                    variable=var,
-                    command=self._update_extension_selection,
+                # Load templates
+                if "templates" in settings:
+                    for media_type in ["audio", "video", "image", "ebook"]:
+                        if (
+                            media_type in settings["templates"]
+                            and settings["templates"][media_type]
+                        ):
+                            self.template_vars[media_type].set(settings["templates"][media_type])
+                # For backward compatibility
+                elif "template" in settings and settings["template"]:
+                    self.template_vars["audio"].set(settings["template"])
+                    # Also update the default template variable for backward compatibility
+                    self.template_var.set(settings["template"])
+
+                # Apply extension selections
+                if "extensions" in settings:
+                    for file_type in ["audio", "video", "image", "ebook"]:
+                        if file_type in settings["extensions"]:
+                            for ext, value in settings["extensions"][file_type].items():
+                                if ext in self.extension_vars[file_type]:
+                                    self.extension_vars[file_type][ext].set(value)
+
+                # Load full paths setting
+                self.show_full_paths = settings.get("show_full_paths", False)
+
+                # Load auto-save setting (defaults to True)
+                self.auto_save_enabled = settings.get("auto_save_enabled", True)
+
+                # Load auto-preview setting (defaults to True)
+                self.auto_preview_enabled = settings.get("auto_preview_enabled", True)
+
+                # Update "All" checkboxes
+                self._update_extension_selection()
+
+                logger.info(f"Settings loaded from {self.config_file}")
+
+                # Generate initial preview if auto-preview is enabled
+                self._auto_generate_preview()
+
+                # Load operation mode
+                self.operation_mode = settings.get("operation_mode", "copy")
+        except Exception as e:
+            logger.error(f"Error loading settings: {e}")
+
+    def _reset_settings(self):
+        """Reset all settings to defaults."""
+        if messagebox.askyesno(
+            "Reset Settings", "Are you sure you want to reset all settings to defaults?"
+        ):
+            try:
+                # Clear entries
+                self.source_entry.delete(0, tk.END)
+                self.output_entry.delete(0, tk.END)
+
+                # Reset templates to defaults
+                self.template_vars["audio"].set("{file_type}/{artist}/{album}/{filename}")
+                self.template_vars["video"].set("{file_type}/{year}/{filename}")
+                self.template_vars["image"].set(
+                    "{file_type}/{creation_year}/{creation_month_name}/{filename}"
                 )
-                cb.grid(row=i // 2, column=i % 2, sticky=tk.W, padx=5)
+                self.template_vars["ebook"].set("{file_type}/{author}/{title}/{filename}")
 
-        # Update the layout
-        self.main_frame.update_idletasks()
+                # For backward compatibility
+                self.template_var.set("{file_type}/{artist}/{album}/{filename}")
+
+                # Reset extension checkboxes to checked
+                for file_type in ["audio", "video", "image", "ebook"]:
+                    getattr(self, f"{file_type}_all_var").set(True)
+                    self._toggle_all_extensions(file_type)
+
+                # Clear preview
+                self._clear_preview()
+
+                # Delete config file if it exists
+                if self.config_file.exists():
+                    self.config_file.unlink()
+                    logger.info(f"Settings file deleted: {self.config_file}")
+
+                self.status_var.set("Settings reset to defaults")
+
+            except Exception as e:
+                logger.error(f"Error resetting settings: {e}")
+                messagebox.showerror("Error", f"Failed to reset settings: {str(e)}")
+
+    def _save_settings_manual(self):
+        """Manually save settings and show confirmation."""
+        self._save_settings()
+        self.status_var.set(f"Settings saved to {self.config_file}")
+        messagebox.showinfo(
+            "Settings Saved", f"Your settings have been saved to:\n{self.config_file}"
+        )
+
+    def _on_template_change(self, *args, media_type=None):
+        """
+        Handle template change event.
+
+        Args:
+            *args: Variable arguments passed by tkinter trace
+            media_type: The media type whose template changed ('audio', 'video', 'image', 'ebook')
+        """
+        # Auto-save settings after a short delay if enabled
+        if getattr(self, "auto_save_enabled", True):
+            if hasattr(self, "_template_timer"):
+                self.root.after_cancel(self._template_timer)
+            self._template_timer = self.root.after(1000, self._save_settings)
+
+        # Auto-generate preview after a short delay
+        if hasattr(self, "_preview_timer"):
+            self.root.after_cancel(self._preview_timer)
+        self._preview_timer = self.root.after(1500, self._auto_generate_preview)
+
+    def _auto_generate_preview(self):
+        """Automatically generate preview if enabled and source directory exists."""
+        if self.auto_preview_enabled:
+            source_dir = self.source_entry.get().strip()
+            if source_dir and os.path.exists(source_dir):
+                # Cancel any pending preview generation
+                if hasattr(self, "_preview_timer"):
+                    self.root.after_cancel(self._preview_timer)
+                # Schedule preview generation after a short delay
+                self._preview_timer = self.root.after(500, self._generate_preview)
+
+    def _show_placeholders_help(self):
+        """Show a modal dialog with information about available placeholders."""
+        # Create a new top-level window
+        help_window = tk.Toplevel(self.root)
+        help_window.title("Available Placeholders")
+        help_window.geometry("600x400")
+        help_window.minsize(600, 400)
+        help_window.transient(self.root)  # Make it a modal dialog
+        help_window.grab_set()  # Make it modal
+
+        # Center the window
+        help_window.update_idletasks()
+        width = help_window.winfo_width()
+        height = help_window.winfo_height()
+        x = (help_window.winfo_screenwidth() // 2) - (width // 2)
+        y = (help_window.winfo_screenheight() // 2) - (height // 2)
+        help_window.geometry(f"{width}x{height}+{x}+{y}")
+
+        # Create a frame for the content
+        content_frame = ttk.Frame(help_window, padding=20)
+        content_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Title
+        title_label = ttk.Label(
+            content_frame, text="Available Placeholders", font=("TkDefaultFont", 14, "bold")
+        )
+        title_label.pack(pady=(0, 20))
+
+        # Create a frame for each category
+        categories_frame = ttk.Frame(content_frame)
+        categories_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Common placeholders
+        common_frame = ttk.LabelFrame(categories_frame, text="Common", padding=10)
+        common_frame.pack(fill=tk.X, pady=5)
+
+        common_placeholders = [
+            ("{filename}", "Original filename without extension"),
+            ("{extension}", "File extension (e.g., mp3, jpg)"),
+            ("{file_type}", "Type of file (audio, video, image, ebook)"),
+            ("{size}", "File size in bytes"),
+            ("{creation_date}", "File creation date (YYYY-MM-DD)"),
+            ("{creation_year}", "Year of file creation (YYYY)"),
+            ("{creation_month}", "Month of file creation (01-12)"),
+            ("{creation_month_name}", "Month name of file creation (January, February, etc.)"),
+        ]
+
+        for i, (placeholder, description) in enumerate(common_placeholders):
+            ttk.Label(common_frame, text=placeholder, width=15, anchor=tk.W).grid(
+                row=i, column=0, sticky=tk.W, padx=5, pady=2
+            )
+            ttk.Label(common_frame, text=description, anchor=tk.W).grid(
+                row=i, column=1, sticky=tk.W, padx=5, pady=2
+            )
+
+        # Audio placeholders
+        audio_frame = ttk.LabelFrame(categories_frame, text="Audio", padding=10)
+        audio_frame.pack(fill=tk.X, pady=5)
+
+        audio_placeholders = [
+            ("{title}", "Song title"),
+            ("{artist}", "Artist name"),
+            ("{album}", "Album name"),
+            ("{year}", "Release year"),
+            ("{genre}", "Music genre"),
+            ("{track}", "Track number"),
+            ("{duration}", "Song duration"),
+            ("{bitrate}", "Audio bitrate"),
+        ]
+
+        for i, (placeholder, description) in enumerate(audio_placeholders):
+            ttk.Label(audio_frame, text=placeholder, width=15, anchor=tk.W).grid(
+                row=i // 2, column=(i % 2) * 2, sticky=tk.W, padx=5, pady=2
+            )
+            ttk.Label(audio_frame, text=description, anchor=tk.W).grid(
+                row=i // 2, column=(i % 2) * 2 + 1, sticky=tk.W, padx=5, pady=2
+            )
+
+        # Image placeholders
+        image_frame = ttk.LabelFrame(categories_frame, text="Image", padding=10)
+        image_frame.pack(fill=tk.X, pady=5)
+
+        image_placeholders = [
+            ("{width}", "Image width in pixels"),
+            ("{height}", "Image height in pixels"),
+            ("{format}", "Image format (e.g., JPEG, PNG)"),
+            ("{camera_make}", "Camera manufacturer"),
+            ("{camera_model}", "Camera model"),
+            ("{date_taken}", "Date when the photo was taken"),
+        ]
+
+        for i, (placeholder, description) in enumerate(image_placeholders):
+            ttk.Label(image_frame, text=placeholder, width=15, anchor=tk.W).grid(
+                row=i // 2, column=(i % 2) * 2, sticky=tk.W, padx=5, pady=2
+            )
+            ttk.Label(image_frame, text=description, anchor=tk.W).grid(
+                row=i // 2, column=(i % 2) * 2 + 1, sticky=tk.W, padx=5, pady=2
+            )
+
+        # eBook placeholders
+        ebook_frame = ttk.LabelFrame(categories_frame, text="eBook", padding=10)
+        ebook_frame.pack(fill=tk.X, pady=5)
+
+        ebook_placeholders = [
+            ("{title}", "Book title"),
+            ("{author}", "Author name"),
+            ("{year}", "Publication year"),
+            ("{genre}", "Book genre"),
+        ]
+
+        for i, (placeholder, description) in enumerate(ebook_placeholders):
+            ttk.Label(ebook_frame, text=placeholder, width=15, anchor=tk.W).grid(
+                row=i // 2, column=(i % 2) * 2, sticky=tk.W, padx=5, pady=2
+            )
+            ttk.Label(ebook_frame, text=description, anchor=tk.W).grid(
+                row=i // 2, column=(i % 2) * 2 + 1, sticky=tk.W, padx=5, pady=2
+            )
+
+        # Example usage
+        example_frame = ttk.LabelFrame(content_frame, text="Example Templates", padding=10)
+        example_frame.pack(fill=tk.X, pady=5)
+
+        examples = [
+            (
+                "{file_type}/{artist}/{album}/{filename}",
+                "Organizes by file type, then artist, then album",
+            ),
+            (
+                "Music/{year}/{artist} - {title}.{extension}",
+                "Organizes music by year, then artist-title",
+            ),
+            (
+                "{file_type}/{creation_year}/{creation_month_name}/{filename}",
+                "Organizes by file type, year, and month",
+            ),
+            (
+                "Photos/{creation_year}/{creation_month}/{filename}",
+                "Organizes photos by year and month number",
+            ),
+        ]
+
+        for i, (template, description) in enumerate(examples):
+            ttk.Label(example_frame, text=template, wraplength=250, anchor=tk.W).grid(
+                row=i, column=0, sticky=tk.W, padx=5, pady=2
+            )
+            ttk.Label(example_frame, text=description, wraplength=300, anchor=tk.W).grid(
+                row=i, column=1, sticky=tk.W, padx=5, pady=2
+            )
+
+        # Close button
+        close_button = ttk.Button(content_frame, text="Close", command=help_window.destroy)
+        close_button.pack(pady=20)
 
 
 class MediaOrganizerGUI:
@@ -1221,10 +1310,16 @@ class MediaOrganizerGUI:
         buttons_frame = ttk.Frame(bottom_frame)
         buttons_frame.pack(fill=tk.X, pady=3)
 
-        self.start_button = ttk.Button(
-            buttons_frame, text="Start Organization", command=self._start_organization
+        # Replace single button with Copy and Move buttons
+        self.copy_button = ttk.Button(
+            buttons_frame, text="Copy Files", command=lambda: self._start_organization("copy")
         )
-        self.start_button.pack(side=tk.LEFT, padx=5)
+        self.copy_button.pack(side=tk.LEFT, padx=5)
+
+        self.move_button = ttk.Button(
+            buttons_frame, text="Move Files", command=lambda: self._start_organization("move")
+        )
+        self.move_button.pack(side=tk.LEFT, padx=5)
 
         self.stop_button = ttk.Button(
             buttons_frame, text="Stop", command=self._stop_organization, state=tk.DISABLED
@@ -1747,8 +1842,8 @@ class MediaOrganizerGUI:
             messagebox.showerror("Error", f"Failed to generate preview: {str(e)}")
             self.status_var.set("Preview generation failed.")
 
-    def _start_organization(self):
-        """Start the organization process."""
+    def _start_organization(self, mode="copy"):
+        """Start the organization process with the specified mode (copy or move)."""
         # Validate inputs
         source_dir = self.source_entry.get().strip()
         output_dir = self.output_entry.get().strip()
@@ -1773,6 +1868,13 @@ class MediaOrganizerGUI:
             messagebox.showerror("Error", "Source directory does not exist.")
             return
 
+        # Confirm move operation
+        if mode == "move" and not messagebox.askyesno(
+            "Confirm Move Operation",
+            "Moving files will remove them from the source directory. Continue?",
+        ):
+            return
+
         # Create output directory if it doesn't exist
         try:
             os.makedirs(output_dir, exist_ok=True)
@@ -1791,6 +1893,7 @@ class MediaOrganizerGUI:
         # Configure organizer
         self.organizer.set_source_dir(source_dir)
         self.organizer.set_output_dir(output_dir)
+        self.organizer.set_operation_mode(mode)
 
         # Set templates for each media type
         for media_type, template in templates.items():
@@ -1802,6 +1905,7 @@ class MediaOrganizerGUI:
         # Log settings
         logger.info(f"Source directory: {source_dir}")
         logger.info(f"Output directory: {output_dir}")
+        logger.info(f"Operation mode: {mode}")
         for media_type, template in templates.items():
             logger.info(f"Using {media_type} template: {template}")
         logger.info(f"Selected extensions: {', '.join(selected_extensions)}")
@@ -1812,7 +1916,8 @@ class MediaOrganizerGUI:
     def _run_organization_with_filters(self, selected_extensions):
         """Run the organization process with the selected file extensions."""
         # Update UI
-        self.start_button.config(state=tk.DISABLED)
+        self.copy_button.config(state=tk.DISABLED)
+        self.move_button.config(state=tk.DISABLED)
         self.stop_button.config(state=tk.NORMAL)
         self.progress_var.set(0)
         self.status_var.set("Starting...")
@@ -1851,7 +1956,6 @@ class MediaOrganizerGUI:
             for file_path in source_path.rglob("*"):
                 if self.organizer.stop_requested:
                     break
-                    
                     
                 # Skip files in the destination directory if it's inside the source
                 if is_dest_in_source and file_path.is_file():
@@ -1899,9 +2003,13 @@ class MediaOrganizerGUI:
                         # Create destination directory if it doesn't exist
                         os.makedirs(dest_path.parent, exist_ok=True)
 
-                        # Copy the file
-                        shutil.copy2(file_path, dest_path)
-                        logger.info(f"Copied {file_path} to {dest_path}")
+                        # Copy or move the file based on operation mode
+                        if self.organizer.operation_mode == "copy":
+                            shutil.copy2(file_path, dest_path)
+                            logger.info(f"Copied {file_path} to {dest_path}")
+                        else:  # move mode
+                            shutil.move(file_path, dest_path)
+                            logger.info(f"Moved {file_path} to {dest_path}")
 
                     except Exception as e:
                         logger.error(f"Error processing file {file_path}: {e}")
@@ -1912,7 +2020,8 @@ class MediaOrganizerGUI:
 
             # Complete
             self._update_progress(processed, total_files, "Complete")
-            logger.info(f"Organization complete. Processed {processed} files.")
+            operation_name = "copy" if self.organizer.operation_mode == "copy" else "move"
+            logger.info(f"{operation_name.capitalize()} operation complete. Processed {processed} files.")
 
         except Exception as e:
             logger.error(f"Error during organization: {e}")
@@ -1927,13 +2036,16 @@ class MediaOrganizerGUI:
 
     def _organization_complete(self):
         """Handle organization completion."""
-        self.start_button.config(state=tk.NORMAL)
+        self.copy_button.config(state=tk.NORMAL)
+        self.move_button.config(state=tk.NORMAL)
         self.stop_button.config(state=tk.DISABLED)
 
+        operation_name = "copied" if self.organizer.operation_mode == "copy" else "moved"
+        
         # Show completion message
         messagebox.showinfo(
             "Complete",
-            f"Organization complete!\n\nProcessed {self.organizer.files_processed} files.",
+            f"Organization complete!\n\n{operation_name.capitalize()} {self.organizer.files_processed} files.",
         )
 
     def _on_close(self):
@@ -1967,6 +2079,7 @@ class MediaOrganizerGUI:
                 "show_full_paths": getattr(self, "show_full_paths", False),
                 "auto_save_enabled": getattr(self, "auto_save_enabled", True),
                 "auto_preview_enabled": getattr(self, "auto_preview_enabled", True),
+                "operation_mode": self.operation_mode,
             }
 
             # Save to file
@@ -2031,6 +2144,9 @@ class MediaOrganizerGUI:
 
                 # Generate initial preview if auto-preview is enabled
                 self._auto_generate_preview()
+
+                # Load operation mode
+                self.operation_mode = settings.get("operation_mode", "copy")
         except Exception as e:
             logger.error(f"Error loading settings: {e}")
 
@@ -2264,6 +2380,275 @@ class MediaOrganizerGUI:
         # Close button
         close_button = ttk.Button(content_frame, text="Close", command=help_window.destroy)
         close_button.pack(pady=20)
+
+
+class LogWindow:
+    """Separate window for displaying logs."""
+    
+    def __init__(self, parent):
+        """Initialize the log window."""
+        self.window = tk.Toplevel(parent)
+        self.window.title("Media Organizer Logs")
+        self.window.geometry("600x400")
+        self.window.minsize(400, 300)
+        
+        # Configure the window to be hidden instead of destroyed when closed
+        self.window.protocol("WM_DELETE_WINDOW", self.hide)
+        
+        # Create the log text widget
+        self.log_text = tk.Text(self.window, wrap=tk.WORD)
+        self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # Add scrollbar
+        scrollbar = ttk.Scrollbar(self.window, command=self.log_text.yview)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.log_text.config(yscrollcommand=scrollbar.set)
+        
+        # Configure logging to text widget
+        self._setup_text_logging()
+        
+        # Initially hide the window
+        self.hide()
+    
+    def _setup_text_logging(self):
+        """Set up logging to the text widget."""
+        class TextHandler(logging.Handler):
+            def __init__(self, text_widget):
+                logging.Handler.__init__(self)
+                self.text_widget = text_widget
+
+            def emit(self, record):
+                msg = self.format(record)
+
+                def append():
+                    self.text_widget.configure(state="normal")
+                    self.text_widget.insert(tk.END, msg + "\n")
+                    self.text_widget.see(tk.END)
+                    self.text_widget.configure(state="disabled")
+
+                # Schedule the append operation on the GUI thread
+                self.text_widget.after(0, append)
+
+        text_handler = TextHandler(self.log_text)
+        text_handler.setFormatter(logging.Formatter("%(asctime)s - %(levelname)s - %(message)s"))
+        logger.addHandler(text_handler)
+
+        # Disable editing
+        self.log_text.configure(state="disabled")
+    
+    def show(self):
+        """Show the log window."""
+        self.window.deiconify()
+        self.window.lift()
+    
+    def hide(self):
+        """Hide the log window."""
+        self.window.withdraw()
+
+
+class PreferencesDialog:
+    """Dialog for managing application preferences."""
+    
+    def __init__(self, parent, app):
+        """Initialize the preferences dialog."""
+        self.dialog = tk.Toplevel(parent)
+        self.dialog.title("Preferences")
+        self.dialog.geometry("600x500")
+        self.dialog.minsize(600, 500)
+        self.dialog.transient(parent)  # Make it a modal dialog
+        self.dialog.grab_set()  # Make it modal
+        
+        # Store reference to main app
+        self.app = app
+        
+        # Center the window
+        self.dialog.update_idletasks()
+        width = self.dialog.winfo_width()
+        height = self.dialog.winfo_height()
+        x = (self.dialog.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.dialog.winfo_screenheight() // 2) - (height // 2)
+        self.dialog.geometry(f"{width}x{height}+{x}+{y}")
+        
+        # Create the main content frame
+        self.content_frame = ttk.Frame(self.dialog, padding=10)
+        self.content_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # Create notebook for tabs
+        self.notebook = ttk.Notebook(self.content_frame)
+        self.notebook.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        
+        # Create General tab
+        self.general_frame = ttk.Frame(self.notebook, padding=10)
+        self.notebook.add(self.general_frame, text="General")
+        
+        # Auto-preview option
+        self.auto_preview_var = tk.BooleanVar(value=self.app.auto_preview_enabled)
+        auto_preview_cb = ttk.Checkbutton(
+            self.general_frame,
+            text="Automatically generate preview when settings change",
+            variable=self.auto_preview_var
+        )
+        auto_preview_cb.pack(anchor=tk.W, pady=5)
+        
+        # Auto-save option
+        self.auto_save_var = tk.BooleanVar(value=getattr(self.app, 'auto_save_enabled', True))
+        auto_save_cb = ttk.Checkbutton(
+            self.general_frame,
+            text="Automatically save settings when inputs change",
+            variable=self.auto_save_var
+        )
+        auto_save_cb.pack(anchor=tk.W, pady=5)
+        
+        # Full path display option
+        self.show_full_paths_var = tk.BooleanVar(value=getattr(self.app, 'show_full_paths', False))
+        full_paths_cb = ttk.Checkbutton(
+            self.general_frame,
+            text="Show full file paths in preview",
+            variable=self.show_full_paths_var
+        )
+        full_paths_cb.pack(anchor=tk.W, pady=5)
+        
+        # Create File Types tab
+        self.file_types_frame = ttk.Frame(self.notebook, padding=10)
+        self.notebook.add(self.file_types_frame, text="File Types")
+        
+        # Create sub-notebook for file type tabs
+        self.file_types_notebook = ttk.Notebook(self.file_types_frame)
+        self.file_types_notebook.pack(fill=tk.BOTH, expand=True)
+        
+        # Create text variables for extensions
+        self.extension_texts = {}
+        
+        # Create sub-tabs for each media type
+        for media_type in ["audio", "video", "image", "ebook"]:
+            frame = ttk.Frame(self.file_types_notebook, padding=10)
+            self.file_types_notebook.add(frame, text=media_type.title())
+            
+            # Add description label
+            ttk.Label(
+                frame,
+                text=f"Enter file extensions for {media_type} files (one per line, with or without dot):",
+                wraplength=400
+            ).pack(anchor=tk.W, pady=(0, 5))
+            
+            # Create text widget with scrollbar for extensions
+            text_frame = ttk.Frame(frame)
+            text_frame.pack(fill=tk.BOTH, expand=True)
+            
+            text_widget = tk.Text(text_frame, height=10, width=40)
+            scrollbar = ttk.Scrollbar(text_frame, orient="vertical", command=text_widget.yview)
+            text_widget.configure(yscrollcommand=scrollbar.set)
+            
+            text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            
+            # Get current extensions and format them
+            current_extensions = [ext.lstrip(".") for ext in SUPPORTED_EXTENSIONS[media_type]]
+            text_widget.insert("1.0", "\n".join(current_extensions))
+            
+            self.extension_texts[media_type] = text_widget
+        
+        # Create buttons frame
+        buttons_frame = ttk.Frame(self.content_frame)
+        buttons_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        # Add Save and Cancel buttons
+        save_button = ttk.Button(buttons_frame, text="Save", command=self._save_preferences)
+        save_button.pack(side=tk.RIGHT, padx=5)
+        
+        cancel_button = ttk.Button(buttons_frame, text="Cancel", command=self.dialog.destroy)
+        cancel_button.pack(side=tk.RIGHT, padx=5)
+    
+    def _save_preferences(self):
+        """Save preferences and update the main application."""
+        # Update auto-preview setting
+        self.app.auto_preview_enabled = self.auto_preview_var.get()
+        
+        # Update auto-save setting
+        self.app.auto_save_enabled = self.auto_save_var.get()
+        
+        # Update full paths setting
+        self.app.show_full_paths = self.show_full_paths_var.get()
+        
+        # Update extensions
+        new_extensions = {}
+        for media_type, text_widget in self.extension_texts.items():
+            # Get extensions from text widget
+            extensions = text_widget.get("1.0", "end-1c").split("\n")
+            # Clean up extensions (remove empty lines, add dot if missing)
+            extensions = [ext.strip() for ext in extensions if ext.strip()]
+            extensions = [ext if ext.startswith(".") else f".{ext}" for ext in extensions]
+            new_extensions[media_type] = extensions
+        
+        # Update SUPPORTED_EXTENSIONS
+        global SUPPORTED_EXTENSIONS
+        SUPPORTED_EXTENSIONS = new_extensions
+        
+        # Update the main window's extension checkboxes
+        self.app._update_extension_checkboxes()
+        
+        # Save settings to file
+        self.app._save_settings()
+        
+        # Generate preview if auto-preview is enabled
+        self.app._auto_generate_preview()
+        
+        # Close the dialog
+        self.dialog.destroy()
+
+    def _update_extension_checkboxes(self):
+        """Update the extension checkboxes in the main window based on SUPPORTED_EXTENSIONS."""
+        # Clear existing extension frames
+        for frame in self.main_frame.winfo_children():
+            if isinstance(frame, ttk.LabelFrame) and frame.winfo_text() == "File Type Filters":
+                frame.destroy()
+
+        # Recreate extension filters frame
+        extensions_frame = ttk.LabelFrame(self.main_frame, text="File Type Filters", padding=5)
+        extensions_frame.pack(fill=tk.X, pady=2)
+
+        # Create a frame for each file type category
+        file_types_frame = ttk.Frame(extensions_frame)
+        file_types_frame.pack(fill=tk.X, pady=2)
+
+        # Clear existing extension variables
+        self.extension_vars = {"audio": {}, "video": {}, "image": {}, "ebook": {}}
+
+        # Recreate frames for each media type
+        for media_type, title in [("audio", "Audio"), ("video", "Video"), 
+                                ("image", "Image"), ("ebook", "eBook")]:
+            type_frame = ttk.LabelFrame(file_types_frame, text=title)
+            type_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
+
+            # Create "Select All" checkbox
+            all_var = tk.BooleanVar(value=True)
+            setattr(self, f"{media_type}_all_var", all_var)
+            all_cb = ttk.Checkbutton(
+                type_frame,
+                text=f"All {title}",
+                variable=all_var,
+                command=lambda t=media_type: self._toggle_all_extensions(t),
+            )
+            all_cb.pack(anchor=tk.W)
+
+            # Create individual checkboxes for extensions
+            extensions_frame = ttk.Frame(type_frame)
+            extensions_frame.pack(fill=tk.X, padx=10)
+
+            for i, ext in enumerate(SUPPORTED_EXTENSIONS[media_type]):
+                ext_name = ext.lstrip(".")
+                var = tk.BooleanVar(value=True)
+                self.extension_vars[media_type][ext] = var
+                cb = ttk.Checkbutton(
+                    extensions_frame,
+                    text=ext_name,
+                    variable=var,
+                    command=self._update_extension_selection,
+                )
+                cb.grid(row=i // 2, column=i % 2, sticky=tk.W, padx=5)
+
+        # Update the layout
+        self.main_frame.update_idletasks()
 
 
 def main():
