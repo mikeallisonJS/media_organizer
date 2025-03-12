@@ -4,3 +4,4 @@
 [] Change Start Organinizatino button into 2 buttons: Copy and Move
 [X] Make sure Bottom Button and Progress Bar are always visible
 [] Prevent source from reading from the destination
+[] Make the preview non blocking

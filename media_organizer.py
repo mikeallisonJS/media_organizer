@@ -719,18 +719,54 @@ class MediaOrganizer:
 
         media_files = []
 
+        # Check if destination is inside source to avoid processing files in the destination
+        is_dest_in_source = False
+        if self.output_dir and self.source_dir:
+            try:
+                # Convert to absolute paths for comparison
+                abs_source = self.source_dir.resolve()
+                abs_output = self.output_dir.resolve()
+                # Check if output is a subdirectory of source
+                is_dest_in_source = str(abs_output).startswith(str(abs_source))
+                if is_dest_in_source:
+                    logger.info(f"Destination directory is inside source directory. Will skip files in destination.")
+            except Exception as e:
+                logger.error(f"Error checking directory relationship: {e}")
+
         # Count total files first
-        self.total_files = sum(
-            1
-            for _ in self.source_dir.rglob("*")
-            if _.is_file() and _.suffix.lower() in all_extensions
-        )
+        self.total_files = 0
+        for file_path in self.source_dir.rglob("*"):
+            if self.stop_requested:
+                break
+                
+            # Skip files in the destination directory if it's inside the source
+            if is_dest_in_source and self.output_dir and file_path.is_file():
+                try:
+                    rel_path = file_path.relative_to(self.source_dir)
+                    dest_path = self.output_dir / rel_path
+                    if file_path.is_relative_to(self.output_dir) or file_path == dest_path:
+                        continue
+                except (ValueError, RuntimeError):
+                    pass  # Not relative, so continue processing
+                    
+            if file_path.is_file() and file_path.suffix.lower() in all_extensions:
+                self.total_files += 1
 
         # Then collect the files
         for file_path in self.source_dir.rglob("*"):
             if self.stop_requested:
                 break
 
+            # Skip files in the destination directory if it's inside the source
+            if is_dest_in_source and self.output_dir and file_path.is_file():
+                try:
+                    rel_path = file_path.relative_to(self.source_dir)
+                    dest_path = self.output_dir / rel_path
+                    if file_path.is_relative_to(self.output_dir) or file_path == dest_path:
+                        continue
+                except (ValueError, RuntimeError):
+                    pass  # Not relative, so continue processing
+                    
             if file_path.is_file() and file_path.suffix.lower() in all_extensions:
                 self.current_file = str(file_path)
                 media_files.append(file_path)
@@ -1634,12 +1670,37 @@ class MediaOrganizerGUI:
                 self.status_var.set("Ready")
                 return
 
-            # Find up to 100 files for preview
+            # Check if destination is inside source to avoid processing files in the destination
             source_path = Path(source_dir)
+            is_dest_in_source = False
+            if output_dir:
+                output_path = Path(output_dir)
+                try:
+                    # Convert to absolute paths for comparison
+                    abs_source = source_path.resolve()
+                    abs_output = output_path.resolve()
+                    # Check if output is a subdirectory of source
+                    is_dest_in_source = str(abs_output).startswith(str(abs_source))
+                    if is_dest_in_source:
+                        logger.info(f"Destination directory is inside source directory. Will skip files in destination for preview.")
+                except Exception as e:
+                    logger.error(f"Error checking directory relationship: {e}")
+
+            # Find up to 100 files for preview
             preview_files = []
             count = 0
 
             for file_path in source_path.rglob("*"):
+                # Skip files in the destination directory if it's inside the source
+                if is_dest_in_source and output_dir and file_path.is_file():
+                    try:
+                        rel_path = file_path.relative_to(source_path)
+                        dest_path = Path(output_dir) / rel_path
+                        if file_path.is_relative_to(Path(output_dir)) or file_path == dest_path:
+                            continue
+                    except (ValueError, RuntimeError):
+                        pass  # Not relative, so continue processing
+                        
                 if file_path.is_file() and file_path.suffix.lower() in selected_extensions:
                     preview_files.append(file_path)
                     count += 1
@@ -1772,12 +1833,38 @@ class MediaOrganizerGUI:
             source_path = Path(self.organizer.source_dir)
             output_path = Path(self.organizer.output_dir)
 
-            # Count total files first
-            total_files = sum(
-                1
-                for _ in source_path.rglob("*")
-                if _.is_file() and _.suffix.lower() in selected_extensions
-            )
+            # Check if destination is inside source to avoid processing files in the destination
+            is_dest_in_source = False
+            try:
+                # Convert to absolute paths for comparison
+                abs_source = source_path.resolve()
+                abs_output = output_path.resolve()
+                # Check if output is a subdirectory of source
+                is_dest_in_source = str(abs_output).startswith(str(abs_source))
+                if is_dest_in_source:
+                    logger.info(f"Destination directory is inside source directory. Will skip files in destination.")
+            except Exception as e:
+                logger.error(f"Error checking directory relationship: {e}")
+
+            # Count total files first (excluding files in destination if it's inside source)
+            total_files = 0
+            for file_path in source_path.rglob("*"):
+                if self.organizer.stop_requested:
+                    break
+                    
+                    
+                # Skip files in the destination directory if it's inside the source
+                if is_dest_in_source and file_path.is_file():
+                    try:
+                        rel_path = file_path.relative_to(source_path)
+                        dest_path = output_path / rel_path
+                        if file_path.is_relative_to(output_path) or file_path == dest_path:
+                            continue
+                    except (ValueError, RuntimeError):
+                        pass  # Not relative, so continue processing
+                        
+                if file_path.is_file() and file_path.suffix.lower() in selected_extensions:
+                    total_files += 1
 
             # Process files
             processed = 0
@@ -1786,6 +1873,16 @@ class MediaOrganizerGUI:
                 if self.organizer.stop_requested:
                     logger.info("Organization stopped by user")
                     break
+
+                # Skip files in the destination directory if it's inside the source
+                if is_dest_in_source and file_path.is_file():
+                    try:
+                        rel_path = file_path.relative_to(source_path)
+                        dest_path = output_path / rel_path
+                        if file_path.is_relative_to(output_path) or file_path == dest_path:
+                            continue
+                    except (ValueError, RuntimeError):
+                        pass  # Not relative, so continue processing
 
                 if file_path.is_file() and file_path.suffix.lower() in selected_extensions:
                     try:
