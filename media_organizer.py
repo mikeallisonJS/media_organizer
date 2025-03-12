@@ -622,11 +622,11 @@ class MediaFile:
                         # If empty, replace with 'Unknown'
                         formatted = formatted.replace(f"{{{placeholder}}}", "Unknown")
                     else:
-                        # Convert to string and sanitize for filesystem
+                    # Convert to string and sanitize for filesystem
                         value_str = str(value)
-                        # Replace invalid characters with underscore
+                    # Replace invalid characters with underscore
                         value_str = re.sub(r'[<>:"/\\|?*]', "_", value_str)
-                        # Replace placeholder in the template
+                    # Replace placeholder in the template
                         formatted = formatted.replace(f"{{{placeholder}}}", value_str)
                 else:
                     # If placeholder not found, replace with 'Unknown'
@@ -731,7 +731,7 @@ class MediaOrganizer:
                     logger.info(f"Destination directory is inside source directory. Will skip files in destination.")
             except Exception as e:
                 logger.error(f"Error checking directory relationship: {e}")
-
+        
         # Count total files first
         self.total_files = 0
         for file_path in self.source_dir.rglob("*"):
@@ -777,7 +777,7 @@ class MediaOrganizer:
         if mode not in ["copy", "move"]:
             raise ValueError("Operation mode must be 'copy' or 'move'")
         self.operation_mode = mode
-
+    
     def organize_files(self, callback=None):
         """
         Organize media files based on their metadata and the template.
@@ -1285,7 +1285,7 @@ class MediaOrganizerGUI:
     def _show_preferences(self):
         """Show the preferences dialog."""
         PreferencesDialog(self.root, self)
-
+    
     def _create_widgets(self):
         """Create the GUI widgets."""
         # Create a main container frame with three sections
@@ -1753,15 +1753,15 @@ class MediaOrganizerGUI:
             "image": self.template_vars["image"].get().strip(),
             "ebook": self.template_vars["ebook"].get().strip(),
         }
-
+        
         if not source_dir:
             messagebox.showerror("Error", "Please select a source directory.")
             return
-
+            
         if not all(templates.values()):
             messagebox.showerror("Error", "Please provide templates for all media types.")
             return
-
+            
         # Clear previous preview
         self._clear_preview()
         
@@ -1788,14 +1788,14 @@ class MediaOrganizerGUI:
             # Set templates for each media type
             for media_type, template in templates.items():
                 self.organizer.set_template(template, media_type)
-
+            
             # Get selected extensions
             selected_extensions = self._get_selected_extensions()
             if not selected_extensions:
                 # Update UI in the main thread
                 self.root.after(0, lambda: self._update_preview_status("No file types selected. Please select at least one file type."))
                 return
-
+                
             # Check if destination is inside source to avoid processing files in the destination
             source_path = Path(source_dir)
             is_dest_in_source = False
@@ -1815,7 +1815,7 @@ class MediaOrganizerGUI:
             # Find up to 100 files for preview
             preview_files = []
             count = 0
-
+            
             for file_path in source_path.rglob("*"):
                 # Skip files in the destination directory if it's inside the source
                 if is_dest_in_source and output_dir and file_path.is_file():
@@ -1832,7 +1832,7 @@ class MediaOrganizerGUI:
                     count += 1
                     if count >= 100:  # Limit to 100 files for preview
                         break
-
+            
             # Prepare preview data
             preview_data = []
             
@@ -1844,10 +1844,10 @@ class MediaOrganizerGUI:
 
                     # Get the appropriate template for this file type
                     template = self.organizer.get_template(media_file.file_type)
-
+                    
                     # Generate destination path
                     rel_path = media_file.get_formatted_path(template)
-
+                    
                     # Get source path for display
                     if getattr(self, "show_full_paths", False):
                         display_source = str(file_path)
@@ -1862,10 +1862,10 @@ class MediaOrganizerGUI:
                     
                     # Add to preview data
                     preview_data.append((display_source, display_dest))
-
+                    
                 except Exception as e:
                     logger.error(f"Error generating preview for {file_path}: {e}")
-
+            
             # Update UI in the main thread
             self.root.after(0, lambda: self._update_preview_results(preview_data, count))
 
@@ -1881,12 +1881,12 @@ class MediaOrganizerGUI:
             self.preview_tree.insert("", "end", values=(display_source, display_dest))
 
         # Update status
-        if count == 0:
-            self.status_var.set("No media files found in the source directory.")
-            self.file_var.set("")
-        else:
+            if count == 0:
+                self.status_var.set("No media files found in the source directory.")
+                self.file_var.set("")
+            else:
             # Count files by media type
-            media_types = {}
+                media_types = {}
             for file_path, _ in preview_data:
                 # Get file extension
                 ext = os.path.splitext(file_path)[1].lower()
@@ -1900,9 +1900,9 @@ class MediaOrganizerGUI:
                 if media_type:
                     media_types[media_type] = media_types.get(media_type, 0) + 1
             
-            # Create detailed message
-            type_counts = ", ".join([f"{count} {media_type}" for media_type, count in media_types.items()])
-            self.status_var.set(f"Preview generated for {count} files.")
+                # Create detailed message
+                type_counts = ", ".join([f"{count} {media_type}" for media_type, count in media_types.items()])
+                self.status_var.set(f"Preview generated for {count} files.")
             self.file_var.set(f"Found: {type_counts}")
     
     def _update_preview_status(self, message, error=False):
@@ -1950,7 +1950,7 @@ class MediaOrganizerGUI:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to create output directory: {str(e)}")
             return
-
+        
         # Get selected extensions
         selected_extensions = self._get_selected_extensions()
         if not selected_extensions:
@@ -2056,7 +2056,7 @@ class MediaOrganizerGUI:
                             continue
                     except (ValueError, RuntimeError):
                         pass  # Not relative, so continue processing
-
+                    
                 if file_path.is_file() and file_path.suffix.lower() in selected_extensions:
                     try:
                         # Extract metadata
@@ -2152,11 +2152,11 @@ class MediaOrganizerGUI:
                 "auto_preview_enabled": getattr(self, "auto_preview_enabled", True),
                 "operation_mode": getattr(self, "operation_mode", "copy"),
             }
-
+            
             # Save to file
             with open(self.config_file, "w") as f:
                 json.dump(settings, f)
-
+                
             logger.info(f"Settings saved to {self.config_file}")
         except Exception as e:
             logger.error(f"Error saving settings: {e}")
@@ -2167,12 +2167,12 @@ class MediaOrganizerGUI:
             if self.config_file.exists():
                 with open(self.config_file, "r") as f:
                     settings = json.load(f)
-
+                
                 # Apply settings
                 if "source_dir" in settings and settings["source_dir"]:
                     self.source_entry.delete(0, tk.END)
                     self.source_entry.insert(0, settings["source_dir"])
-
+                
                 if "output_dir" in settings and settings["output_dir"]:
                     self.output_entry.delete(0, tk.END)
                     self.output_entry.insert(0, settings["output_dir"])
@@ -2202,7 +2202,7 @@ class MediaOrganizerGUI:
                             custom_extensions[media_type] = exts
                     # Update global extensions
                     SUPPORTED_EXTENSIONS = custom_extensions
-
+                
                 # Apply extension selections
                 if "extensions" in settings:
                     for file_type in ["audio", "video", "image", "ebook"]:
@@ -2210,7 +2210,7 @@ class MediaOrganizerGUI:
                             for ext, value in settings["extensions"][file_type].items():
                                 if ext in self.extension_vars[file_type]:
                                     self.extension_vars[file_type][ext].set(value)
-
+                
                 # Load full paths setting
                 self.show_full_paths = settings.get("show_full_paths", False)
 
@@ -2222,9 +2222,9 @@ class MediaOrganizerGUI:
 
                 # Update "All" checkboxes
                 self._update_extension_selection()
-
+                
                 logger.info(f"Settings loaded from {self.config_file}")
-
+                
                 # Generate initial preview if auto-preview is enabled
                 self._auto_generate_preview()
 
@@ -2253,22 +2253,22 @@ class MediaOrganizerGUI:
 
                 # For backward compatibility
                 self.template_var.set("{file_type}/{artist}/{album}/{filename}")
-
+                
                 # Reset extension checkboxes to checked
                 for file_type in ["audio", "video", "image", "ebook"]:
                     getattr(self, f"{file_type}_all_var").set(True)
                     self._toggle_all_extensions(file_type)
-
+                
                 # Clear preview
                 self._clear_preview()
-
+                
                 # Delete config file if it exists
                 if self.config_file.exists():
                     self.config_file.unlink()
                     logger.info(f"Settings file deleted: {self.config_file}")
-
+                
                 self.status_var.set("Settings reset to defaults")
-
+                
             except Exception as e:
                 logger.error(f"Error resetting settings: {e}")
                 messagebox.showerror("Error", f"Failed to reset settings: {str(e)}")
@@ -2294,11 +2294,11 @@ class MediaOrganizerGUI:
             if hasattr(self, "_template_timer"):
                 self.root.after_cancel(self._template_timer)
             self._template_timer = self.root.after(1000, self._save_settings)
-
+        
         # Auto-generate preview after a short delay
         if hasattr(self, "_preview_timer"):
             self.root.after_cancel(self._preview_timer)
-        self._preview_timer = self.root.after(1500, self._auto_generate_preview)
+            self._preview_timer = self.root.after(1500, self._auto_generate_preview)
 
     def _auto_generate_preview(self):
         """Automatically generate preview if enabled and source directory exists."""
@@ -2320,7 +2320,7 @@ class MediaOrganizerGUI:
         help_window.minsize(600, 400)
         help_window.transient(self.root)  # Make it a modal dialog
         help_window.grab_set()  # Make it modal
-
+        
         # Center the window
         help_window.update_idletasks()
         width = help_window.winfo_width()
@@ -2328,25 +2328,25 @@ class MediaOrganizerGUI:
         x = (help_window.winfo_screenwidth() // 2) - (width // 2)
         y = (help_window.winfo_screenheight() // 2) - (height // 2)
         help_window.geometry(f"{width}x{height}+{x}+{y}")
-
+        
         # Create a frame for the content
         content_frame = ttk.Frame(help_window, padding=20)
         content_frame.pack(fill=tk.BOTH, expand=True)
-
+        
         # Title
         title_label = ttk.Label(
             content_frame, text="Available Placeholders", font=("TkDefaultFont", 14, "bold")
         )
         title_label.pack(pady=(0, 20))
-
+        
         # Create a frame for each category
         categories_frame = ttk.Frame(content_frame)
         categories_frame.pack(fill=tk.BOTH, expand=True)
-
+        
         # Common placeholders
         common_frame = ttk.LabelFrame(categories_frame, text="Common", padding=10)
         common_frame.pack(fill=tk.X, pady=5)
-
+        
         common_placeholders = [
             ("{filename}", "Original filename without extension"),
             ("{extension}", "File extension (e.g., mp3, jpg)"),
@@ -2357,7 +2357,7 @@ class MediaOrganizerGUI:
             ("{creation_month}", "Month of file creation (01-12)"),
             ("{creation_month_name}", "Month name of file creation (January, February, etc.)"),
         ]
-
+        
         for i, (placeholder, description) in enumerate(common_placeholders):
             ttk.Label(common_frame, text=placeholder, width=15, anchor=tk.W).grid(
                 row=i, column=0, sticky=tk.W, padx=5, pady=2
@@ -2365,11 +2365,11 @@ class MediaOrganizerGUI:
             ttk.Label(common_frame, text=description, anchor=tk.W).grid(
                 row=i, column=1, sticky=tk.W, padx=5, pady=2
             )
-
+        
         # Audio placeholders
         audio_frame = ttk.LabelFrame(categories_frame, text="Audio", padding=10)
         audio_frame.pack(fill=tk.X, pady=5)
-
+        
         audio_placeholders = [
             ("{title}", "Song title"),
             ("{artist}", "Artist name"),
@@ -2380,7 +2380,7 @@ class MediaOrganizerGUI:
             ("{duration}", "Song duration"),
             ("{bitrate}", "Audio bitrate"),
         ]
-
+        
         for i, (placeholder, description) in enumerate(audio_placeholders):
             ttk.Label(audio_frame, text=placeholder, width=15, anchor=tk.W).grid(
                 row=i // 2, column=(i % 2) * 2, sticky=tk.W, padx=5, pady=2
@@ -2388,11 +2388,11 @@ class MediaOrganizerGUI:
             ttk.Label(audio_frame, text=description, anchor=tk.W).grid(
                 row=i // 2, column=(i % 2) * 2 + 1, sticky=tk.W, padx=5, pady=2
             )
-
+        
         # Image placeholders
         image_frame = ttk.LabelFrame(categories_frame, text="Image", padding=10)
         image_frame.pack(fill=tk.X, pady=5)
-
+        
         image_placeholders = [
             ("{width}", "Image width in pixels"),
             ("{height}", "Image height in pixels"),
@@ -2401,7 +2401,7 @@ class MediaOrganizerGUI:
             ("{camera_model}", "Camera model"),
             ("{date_taken}", "Date when the photo was taken"),
         ]
-
+        
         for i, (placeholder, description) in enumerate(image_placeholders):
             ttk.Label(image_frame, text=placeholder, width=15, anchor=tk.W).grid(
                 row=i // 2, column=(i % 2) * 2, sticky=tk.W, padx=5, pady=2
@@ -2428,11 +2428,11 @@ class MediaOrganizerGUI:
             ttk.Label(ebook_frame, text=description, anchor=tk.W).grid(
                 row=i // 2, column=(i % 2) * 2 + 1, sticky=tk.W, padx=5, pady=2
             )
-
+        
         # Example usage
         example_frame = ttk.LabelFrame(content_frame, text="Example Templates", padding=10)
         example_frame.pack(fill=tk.X, pady=5)
-
+        
         examples = [
             (
                 "{file_type}/{artist}/{album}/{filename}",
@@ -2451,7 +2451,7 @@ class MediaOrganizerGUI:
                 "Organizes photos by year and month number",
             ),
         ]
-
+        
         for i, (template, description) in enumerate(examples):
             ttk.Label(example_frame, text=template, wraplength=250, anchor=tk.W).grid(
                 row=i, column=0, sticky=tk.W, padx=5, pady=2
@@ -2459,7 +2459,7 @@ class MediaOrganizerGUI:
             ttk.Label(example_frame, text=description, wraplength=300, anchor=tk.W).grid(
                 row=i, column=1, sticky=tk.W, padx=5, pady=2
             )
-
+        
         # Close button
         close_button = ttk.Button(content_frame, text="Close", command=help_window.destroy)
         close_button.pack(pady=20)

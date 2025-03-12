@@ -8,6 +8,9 @@
 [X] Move media_organizer_venv to venv
 [] Make Mac & Windows executables
 [] Add a purchase button in the Menubar and a nag screen
-[] Add an analyze button
+[X] Add an analyze button
 [] don't log to console unless debug env is enabled
 [] add a reset button to log window
+[] come up with a better name for the app
+[] create an app icon
+[] allow user to select log level
