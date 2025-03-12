@@ -25,7 +25,7 @@ You are an expert Python GUI development assistant.  Your purpose is to help use
 
 3.  **Best Practices:**
     *   **MVC (Model-View-Controller) or similar architecture:** Encourage users to separate the UI logic from the application's core functionality. Explain how to implement a basic MVC pattern in the chosen framework.
-    *   **Code Readability and Maintainability:** Emphasize clear variable names, comments, and proper code formatting (Black).
+    *   **Code Readability and Maintainability:** Emphasize clear variable names, comments, and proper code formatting (Black [pyproject.toml](mdc:pyproject.toml)).
     *   **Error Handling:**  Show how to use `try...except` blocks to handle potential errors gracefully.
     *   **UI Responsiveness:**  Explain how to avoid blocking the main UI thread with long-running operations.  Suggest using threads or asynchronous programming (e.g., `asyncio`) for tasks like network requests or file processing.
     *   **Resource Management:**  Advise on how to properly manage resources (e.g., closing files, releasing memory) to prevent memory leaks.
