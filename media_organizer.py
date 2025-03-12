@@ -20,6 +20,9 @@ from mutagen.mp4 import MP4
 from mutagen.id3 import ID3
 from PIL import Image
 
+# Import the extensions module
+import extensions
+
 try:
     from pymediainfo import MediaInfo
 
@@ -38,13 +41,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger("MediaOrganizer")
 
-# Supported file extensions
-SUPPORTED_EXTENSIONS = {
-    "audio": [".mp3", ".flac", ".m4a", ".aac", ".ogg", ".wav"],
-    "video": [".mp4", ".mkv", ".avi", ".mov", ".wmv"],
-    "image": [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff"],
-    "ebook": [".epub", ".pdf", ".mobi", ".azw", ".azw3", ".fb2"],
-}
+# Initialize SUPPORTED_EXTENSIONS from the extensions module
+SUPPORTED_EXTENSIONS = extensions.DEFAULT_EXTENSIONS.copy()
 
 
 class MediaFile:
@@ -59,8 +57,8 @@ class MediaFile:
     def _get_file_type(self):
         """Determine the type of media file."""
         ext = self.file_path.suffix.lower()
-        for file_type, extensions in SUPPORTED_EXTENSIONS.items():
-            if ext in extensions:
+        for file_type, extensions_list in SUPPORTED_EXTENSIONS.items():
+            if ext in extensions_list:
                 return file_type
         return "unknown"
     
@@ -715,8 +713,8 @@ class MediaOrganizer:
             raise ValueError("Source directory does not exist")
         
         all_extensions = []
-        for extensions in SUPPORTED_EXTENSIONS.values():
-            all_extensions.extend(extensions)
+        for extensions_list in SUPPORTED_EXTENSIONS.values():
+            all_extensions.extend(extensions_list)
         
         media_files = []
         
@@ -895,10 +893,12 @@ class MediaOrganizer:
                     "image": {ext: var.get() for ext, var in self.extension_vars["image"].items()},
                     "ebook": {ext: var.get() for ext, var in self.extension_vars["ebook"].items()},
                 },
+                # Save custom extensions
+                "custom_extensions": SUPPORTED_EXTENSIONS,
                 "show_full_paths": getattr(self, "show_full_paths", False),
                 "auto_save_enabled": getattr(self, "auto_save_enabled", True),
                 "auto_preview_enabled": getattr(self, "auto_preview_enabled", True),
-                "operation_mode": self.operation_mode,
+                "operation_mode": getattr(self, "operation_mode", "copy"),
             }
 
             # Save to file
@@ -938,6 +938,18 @@ class MediaOrganizer:
                     self.template_vars["audio"].set(settings["template"])
                     # Also update the default template variable for backward compatibility
                     self.template_var.set(settings["template"])
+
+                # Load custom extensions if available
+                if "custom_extensions" in settings:
+                    global SUPPORTED_EXTENSIONS
+                    # Start with default extensions
+                    custom_extensions = extensions.DEFAULT_EXTENSIONS.copy()
+                    # Update with custom extensions
+                    for media_type, exts in settings["custom_extensions"].items():
+                        if media_type in custom_extensions and exts:
+                            custom_extensions[media_type] = exts
+                    # Update global extensions
+                    SUPPORTED_EXTENSIONS = custom_extensions
 
                 # Apply extension selections
                 if "extensions" in settings:
@@ -1595,6 +1607,17 @@ class MediaOrganizerGUI:
         )
         preview_frame.pack(fill=tk.BOTH, expand=True, pady=2)
 
+        # Add a button frame at the top of the preview
+        preview_button_frame = ttk.Frame(preview_frame)
+        preview_button_frame.pack(fill=tk.X, pady=(0, 5))
+        
+        # Add Analyze button
+        analyze_button = ttk.Button(
+            preview_button_frame, text="Analyze", command=self._generate_preview
+        )
+        analyze_button.pack(side=tk.LEFT, padx=5)
+        self._create_tooltip(analyze_button, "Refresh the preview based on current settings")
+        
         # Preview table with scrollbars
         preview_container = ttk.Frame(preview_frame)
         preview_container.pack(fill=tk.BOTH, expand=True)
@@ -1624,7 +1647,7 @@ class MediaOrganizerGUI:
         preview_scrollbar_y.pack(side=tk.RIGHT, fill=tk.Y)
 
         preview_scrollbar_x = ttk.Scrollbar(
-            preview_frame, orient="horizontal", command=self.preview_tree.xview
+            preview_container, orient="horizontal", command=self.preview_tree.xview
         )
         preview_scrollbar_x.pack(side=tk.BOTTOM, fill=tk.X)
 
@@ -1711,8 +1734,8 @@ class MediaOrganizerGUI:
     def _get_selected_extensions(self):
         """Get a list of all selected file extensions."""
         selected_extensions = []
-        for file_type, extensions in self.extension_vars.items():
-            for ext, var in extensions.items():
+        for file_type, extensions_list in self.extension_vars.items():
+            for ext, var in extensions_list.items():
                 if var.get():
                     selected_extensions.append(ext)
         return selected_extensions
@@ -1743,7 +1766,8 @@ class MediaOrganizerGUI:
         self._clear_preview()
         
         # Update status to show preview is generating
-        self.status_var.set("Generating preview...")
+        self.status_var.set("Analyzing files and generating preview...")
+        self.file_var.set("Please wait while files are being analyzed...")
         self.root.update_idletasks()
         
         # Start preview generation in a separate thread
@@ -1859,9 +1883,28 @@ class MediaOrganizerGUI:
         # Update status
         if count == 0:
             self.status_var.set("No media files found in the source directory.")
+            self.file_var.set("")
         else:
+            # Count files by media type
+            media_types = {}
+            for file_path, _ in preview_data:
+                # Get file extension
+                ext = os.path.splitext(file_path)[1].lower()
+                # Determine media type
+                media_type = None
+                for type_name, extensions in SUPPORTED_EXTENSIONS.items():
+                    if ext in extensions:
+                        media_type = type_name
+                        break
+                
+                if media_type:
+                    media_types[media_type] = media_types.get(media_type, 0) + 1
+            
+            # Create detailed message
+            type_counts = ", ".join([f"{count} {media_type}" for media_type, count in media_types.items()])
             self.status_var.set(f"Preview generated for {count} files.")
-
+            self.file_var.set(f"Found: {type_counts}")
+    
     def _update_preview_status(self, message, error=False):
         """Update the preview status with a message."""
         self.status_var.set(message)
@@ -2102,16 +2145,18 @@ class MediaOrganizerGUI:
                     "image": {ext: var.get() for ext, var in self.extension_vars["image"].items()},
                     "ebook": {ext: var.get() for ext, var in self.extension_vars["ebook"].items()},
                 },
+                # Save custom extensions
+                "custom_extensions": SUPPORTED_EXTENSIONS,
                 "show_full_paths": getattr(self, "show_full_paths", False),
                 "auto_save_enabled": getattr(self, "auto_save_enabled", True),
                 "auto_preview_enabled": getattr(self, "auto_preview_enabled", True),
-                "operation_mode": self.operation_mode,
+                "operation_mode": getattr(self, "operation_mode", "copy"),
             }
-            
+
             # Save to file
             with open(self.config_file, "w") as f:
                 json.dump(settings, f)
-                
+
             logger.info(f"Settings saved to {self.config_file}")
         except Exception as e:
             logger.error(f"Error saving settings: {e}")
@@ -2122,12 +2167,12 @@ class MediaOrganizerGUI:
             if self.config_file.exists():
                 with open(self.config_file, "r") as f:
                     settings = json.load(f)
-                
+
                 # Apply settings
                 if "source_dir" in settings and settings["source_dir"]:
                     self.source_entry.delete(0, tk.END)
                     self.source_entry.insert(0, settings["source_dir"])
-                
+
                 if "output_dir" in settings and settings["output_dir"]:
                     self.output_entry.delete(0, tk.END)
                     self.output_entry.insert(0, settings["output_dir"])
@@ -2145,7 +2190,19 @@ class MediaOrganizerGUI:
                     self.template_vars["audio"].set(settings["template"])
                     # Also update the default template variable for backward compatibility
                     self.template_var.set(settings["template"])
-                
+
+                # Load custom extensions if available
+                if "custom_extensions" in settings:
+                    global SUPPORTED_EXTENSIONS
+                    # Start with default extensions
+                    custom_extensions = extensions.DEFAULT_EXTENSIONS.copy()
+                    # Update with custom extensions
+                    for media_type, exts in settings["custom_extensions"].items():
+                        if media_type in custom_extensions and exts:
+                            custom_extensions[media_type] = exts
+                    # Update global extensions
+                    SUPPORTED_EXTENSIONS = custom_extensions
+
                 # Apply extension selections
                 if "extensions" in settings:
                     for file_type in ["audio", "video", "image", "ebook"]:
@@ -2153,7 +2210,7 @@ class MediaOrganizerGUI:
                             for ext, value in settings["extensions"][file_type].items():
                                 if ext in self.extension_vars[file_type]:
                                     self.extension_vars[file_type][ext].set(value)
-                
+
                 # Load full paths setting
                 self.show_full_paths = settings.get("show_full_paths", False)
 
@@ -2165,9 +2222,9 @@ class MediaOrganizerGUI:
 
                 # Update "All" checkboxes
                 self._update_extension_selection()
-                
+
                 logger.info(f"Settings loaded from {self.config_file}")
-                
+
                 # Generate initial preview if auto-preview is enabled
                 self._auto_generate_preview()
 
@@ -2237,7 +2294,7 @@ class MediaOrganizerGUI:
             if hasattr(self, "_template_timer"):
                 self.root.after_cancel(self._template_timer)
             self._template_timer = self.root.after(1000, self._save_settings)
-        
+
         # Auto-generate preview after a short delay
         if hasattr(self, "_preview_timer"):
             self.root.after_cancel(self._preview_timer)
@@ -2263,7 +2320,7 @@ class MediaOrganizerGUI:
         help_window.minsize(600, 400)
         help_window.transient(self.root)  # Make it a modal dialog
         help_window.grab_set()  # Make it modal
-        
+
         # Center the window
         help_window.update_idletasks()
         width = help_window.winfo_width()
@@ -2271,25 +2328,25 @@ class MediaOrganizerGUI:
         x = (help_window.winfo_screenwidth() // 2) - (width // 2)
         y = (help_window.winfo_screenheight() // 2) - (height // 2)
         help_window.geometry(f"{width}x{height}+{x}+{y}")
-        
+
         # Create a frame for the content
         content_frame = ttk.Frame(help_window, padding=20)
         content_frame.pack(fill=tk.BOTH, expand=True)
-        
+
         # Title
         title_label = ttk.Label(
             content_frame, text="Available Placeholders", font=("TkDefaultFont", 14, "bold")
         )
         title_label.pack(pady=(0, 20))
-        
+
         # Create a frame for each category
         categories_frame = ttk.Frame(content_frame)
         categories_frame.pack(fill=tk.BOTH, expand=True)
-        
+
         # Common placeholders
         common_frame = ttk.LabelFrame(categories_frame, text="Common", padding=10)
         common_frame.pack(fill=tk.X, pady=5)
-        
+
         common_placeholders = [
             ("{filename}", "Original filename without extension"),
             ("{extension}", "File extension (e.g., mp3, jpg)"),
@@ -2300,7 +2357,7 @@ class MediaOrganizerGUI:
             ("{creation_month}", "Month of file creation (01-12)"),
             ("{creation_month_name}", "Month name of file creation (January, February, etc.)"),
         ]
-        
+
         for i, (placeholder, description) in enumerate(common_placeholders):
             ttk.Label(common_frame, text=placeholder, width=15, anchor=tk.W).grid(
                 row=i, column=0, sticky=tk.W, padx=5, pady=2
@@ -2308,11 +2365,11 @@ class MediaOrganizerGUI:
             ttk.Label(common_frame, text=description, anchor=tk.W).grid(
                 row=i, column=1, sticky=tk.W, padx=5, pady=2
             )
-        
+
         # Audio placeholders
         audio_frame = ttk.LabelFrame(categories_frame, text="Audio", padding=10)
         audio_frame.pack(fill=tk.X, pady=5)
-        
+
         audio_placeholders = [
             ("{title}", "Song title"),
             ("{artist}", "Artist name"),
@@ -2323,7 +2380,7 @@ class MediaOrganizerGUI:
             ("{duration}", "Song duration"),
             ("{bitrate}", "Audio bitrate"),
         ]
-        
+
         for i, (placeholder, description) in enumerate(audio_placeholders):
             ttk.Label(audio_frame, text=placeholder, width=15, anchor=tk.W).grid(
                 row=i // 2, column=(i % 2) * 2, sticky=tk.W, padx=5, pady=2
@@ -2331,11 +2388,11 @@ class MediaOrganizerGUI:
             ttk.Label(audio_frame, text=description, anchor=tk.W).grid(
                 row=i // 2, column=(i % 2) * 2 + 1, sticky=tk.W, padx=5, pady=2
             )
-        
+
         # Image placeholders
         image_frame = ttk.LabelFrame(categories_frame, text="Image", padding=10)
         image_frame.pack(fill=tk.X, pady=5)
-        
+
         image_placeholders = [
             ("{width}", "Image width in pixels"),
             ("{height}", "Image height in pixels"),
@@ -2344,7 +2401,7 @@ class MediaOrganizerGUI:
             ("{camera_model}", "Camera model"),
             ("{date_taken}", "Date when the photo was taken"),
         ]
-        
+
         for i, (placeholder, description) in enumerate(image_placeholders):
             ttk.Label(image_frame, text=placeholder, width=15, anchor=tk.W).grid(
                 row=i // 2, column=(i % 2) * 2, sticky=tk.W, padx=5, pady=2
@@ -2371,11 +2428,11 @@ class MediaOrganizerGUI:
             ttk.Label(ebook_frame, text=description, anchor=tk.W).grid(
                 row=i // 2, column=(i % 2) * 2 + 1, sticky=tk.W, padx=5, pady=2
             )
-        
+
         # Example usage
         example_frame = ttk.LabelFrame(content_frame, text="Example Templates", padding=10)
         example_frame.pack(fill=tk.X, pady=5)
-        
+
         examples = [
             (
                 "{file_type}/{artist}/{album}/{filename}",
@@ -2394,7 +2451,7 @@ class MediaOrganizerGUI:
                 "Organizes photos by year and month number",
             ),
         ]
-        
+
         for i, (template, description) in enumerate(examples):
             ttk.Label(example_frame, text=template, wraplength=250, anchor=tk.W).grid(
                 row=i, column=0, sticky=tk.W, padx=5, pady=2
@@ -2402,10 +2459,34 @@ class MediaOrganizerGUI:
             ttk.Label(example_frame, text=description, wraplength=300, anchor=tk.W).grid(
                 row=i, column=1, sticky=tk.W, padx=5, pady=2
             )
-        
+
         # Close button
         close_button = ttk.Button(content_frame, text="Close", command=help_window.destroy)
         close_button.pack(pady=20)
+
+    def _create_tooltip(self, widget, text):
+        """Create a tooltip for a widget."""
+        def enter(event):
+            x, y, _, _ = widget.bbox("insert")
+            x += widget.winfo_rootx() + 25
+            y += widget.winfo_rooty() + 25
+            
+            # Create a toplevel window
+            self.tooltip = tk.Toplevel(widget)
+            self.tooltip.wm_overrideredirect(True)
+            self.tooltip.wm_geometry(f"+{x}+{y}")
+            
+            label = ttk.Label(self.tooltip, text=text, justify=tk.LEFT,
+                             background="#ffffe0", relief=tk.SOLID, borderwidth=1,
+                             wraplength=250)
+            label.pack(padx=3, pady=3)
+            
+        def leave(event):
+            if hasattr(self, "tooltip"):
+                self.tooltip.destroy()
+                
+        widget.bind("<Enter>", enter)
+        widget.bind("<Leave>", leave)
 
 
 class LogWindow:
@@ -2573,6 +2654,14 @@ class PreferencesDialog:
             text_widget.insert("1.0", "\n".join(current_extensions))
             
             self.extension_texts[media_type] = text_widget
+            
+            # Add a "Reset to Default" button
+            reset_button = ttk.Button(
+                frame, 
+                text="Reset to Default", 
+                command=lambda m=media_type: self._reset_extensions_to_default(m)
+            )
+            reset_button.pack(anchor=tk.E, pady=5)
         
         # Create buttons frame
         buttons_frame = ttk.Frame(self.content_frame)
@@ -2584,16 +2673,23 @@ class PreferencesDialog:
         
         cancel_button = ttk.Button(buttons_frame, text="Cancel", command=self.dialog.destroy)
         cancel_button.pack(side=tk.RIGHT, padx=5)
+        
+    def _reset_extensions_to_default(self, media_type):
+        """Reset extensions for a media type to default values."""
+        # Get default extensions from the extensions module
+        default_extensions = [ext.lstrip(".") for ext in extensions.DEFAULT_EXTENSIONS[media_type]]
+        
+        # Clear the text widget
+        self.extension_texts[media_type].delete("1.0", tk.END)
+        
+        # Insert default extensions
+        self.extension_texts[media_type].insert("1.0", "\n".join(default_extensions))
     
     def _save_preferences(self):
         """Save preferences and update the main application."""
-        # Update auto-preview setting
+        # Update app settings
         self.app.auto_preview_enabled = self.auto_preview_var.get()
-        
-        # Update auto-save setting
         self.app.auto_save_enabled = self.auto_save_var.get()
-        
-        # Update full paths setting
         self.app.show_full_paths = self.show_full_paths_var.get()
         
         # Update extensions
@@ -2610,14 +2706,12 @@ class PreferencesDialog:
         global SUPPORTED_EXTENSIONS
         SUPPORTED_EXTENSIONS = new_extensions
         
-        # Update the main window's extension checkboxes
-        self.app._update_extension_checkboxes()
+        # Show a message about restarting
+        messagebox.showinfo("Extensions Updated", 
+                           "Extension changes will be applied after restarting the application.")
         
         # Save settings to file
         self.app._save_settings()
-        
-        # Generate preview if auto-preview is enabled
-        self.app._auto_generate_preview()
         
         # Close the dialog
         self.dialog.destroy()
