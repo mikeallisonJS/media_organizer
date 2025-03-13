@@ -899,6 +899,7 @@ class MediaOrganizer:
                 "show_full_paths": getattr(self, "show_full_paths", False),
                 "auto_save_enabled": getattr(self, "auto_save_enabled", True),
                 "auto_preview_enabled": getattr(self, "auto_preview_enabled", True),
+                "logging_level": getattr(self, "logging_level", defaults.DEFAULT_SETTINGS["logging_level"]),
                 "operation_mode": getattr(self, "operation_mode", "copy"),
             }
 
@@ -969,6 +970,9 @@ class MediaOrganizer:
                 # Load auto-preview setting (defaults to True)
                 self.auto_preview_enabled = settings.get("auto_preview_enabled", True)
 
+                # Load logging level setting
+                self.logging_level = settings.get("logging_level", defaults.DEFAULT_SETTINGS["logging_level"])
+
                 # Update "All" checkboxes
                 self._update_extension_selection()
 
@@ -1008,6 +1012,7 @@ class MediaOrganizer:
                 self.show_full_paths = defaults.DEFAULT_SETTINGS["show_full_paths"]
                 self.auto_save_enabled = defaults.DEFAULT_SETTINGS["auto_save_enabled"]
                 self.auto_preview_enabled = defaults.DEFAULT_SETTINGS["auto_preview_enabled"]
+                self.logging_level = defaults.DEFAULT_SETTINGS["logging_level"]
                 
                 # Clear preview
                 self._clear_preview()
@@ -1256,6 +1261,7 @@ class MediaOrganizerGUI:
         self.show_full_paths = defaults.DEFAULT_SETTINGS["show_full_paths"]
         self.auto_save_enabled = defaults.DEFAULT_SETTINGS["auto_save_enabled"]
         self.auto_preview_enabled = defaults.DEFAULT_SETTINGS["auto_preview_enabled"]
+        self.logging_level = defaults.DEFAULT_SETTINGS["logging_level"]
         
         # Create variables for extension filters
         self.extension_vars = {"audio": {}, "video": {}, "image": {}, "ebook": {}}
@@ -2190,6 +2196,7 @@ class MediaOrganizerGUI:
                 "show_full_paths": getattr(self, "show_full_paths", False),
                 "auto_save_enabled": getattr(self, "auto_save_enabled", True),
                 "auto_preview_enabled": getattr(self, "auto_preview_enabled", True),
+                "logging_level": getattr(self, "logging_level", defaults.DEFAULT_SETTINGS["logging_level"]),
                 "operation_mode": getattr(self, "operation_mode", "copy"),
             }
             
@@ -2260,6 +2267,9 @@ class MediaOrganizerGUI:
                 # Load auto-preview setting (defaults to True)
                 self.auto_preview_enabled = settings.get("auto_preview_enabled", True)
 
+                # Load logging level setting
+                self.logging_level = settings.get("logging_level", defaults.DEFAULT_SETTINGS["logging_level"])
+
                 # Update "All" checkboxes
                 self._update_extension_selection()
                 
@@ -2299,6 +2309,7 @@ class MediaOrganizerGUI:
                 self.show_full_paths = defaults.DEFAULT_SETTINGS["show_full_paths"]
                 self.auto_save_enabled = defaults.DEFAULT_SETTINGS["auto_save_enabled"]
                 self.auto_preview_enabled = defaults.DEFAULT_SETTINGS["auto_preview_enabled"]
+                self.logging_level = defaults.DEFAULT_SETTINGS["logging_level"]
                 
                 # Clear preview
                 self._clear_preview()
@@ -2532,6 +2543,22 @@ class MediaOrganizerGUI:
 
 def main():
     """Main entry point for the application."""
+    # Try to load logging level from settings file
+    config_file = Path.home() / defaults.DEFAULT_PATHS["settings_file"]
+    if config_file.exists():
+        try:
+            with open(config_file, "r") as f:
+                settings = json.load(f)
+                logging_level = settings.get("logging_level", defaults.DEFAULT_SETTINGS["logging_level"])
+                numeric_level = defaults.LOGGING_LEVELS.get(logging_level, logging.INFO)
+                logger.setLevel(numeric_level)
+                # Also update the root logger for the file handler
+                for handler in logging.root.handlers:
+                    if isinstance(handler, logging.FileHandler):
+                        handler.setLevel(numeric_level)
+        except Exception as e:
+            logger.error(f"Error loading logging level from settings: {e}")
+    
     root = tk.Tk()
     app = MediaOrganizerGUI(root)
     root.mainloop()

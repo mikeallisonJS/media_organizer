@@ -7,6 +7,7 @@ Centralizing these values makes the application more maintainable and configurab
 
 # Import the extensions module to access DEFAULT_EXTENSIONS
 import extensions
+import logging
 
 # Default templates for each media type
 DEFAULT_TEMPLATES = {
@@ -21,6 +22,16 @@ DEFAULT_SETTINGS = {
     "show_full_paths": False,
     "auto_save_enabled": True,
     "auto_preview_enabled": True,
+    "logging_level": "INFO",
+}
+
+# Logging levels with user-friendly names
+LOGGING_LEVELS = {
+    "DEBUG": logging.DEBUG,
+    "INFO": logging.INFO,
+    "WARNING": logging.WARNING,
+    "ERROR": logging.ERROR,
+    "CRITICAL": logging.CRITICAL,
 }
 
 # Default window sizes

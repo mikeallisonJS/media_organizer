@@ -13,7 +13,8 @@
 [X] add a reset button to log window
 [] come up with a better name for the app
 [] create an app icon
-[] allow user to select log level
+[X] allow user to select log level
 [X] make log window it's own module
 [X] make preferences window it's own module
 [X] make a module for all default values
+[] fix save button in preferences

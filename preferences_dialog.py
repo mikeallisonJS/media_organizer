@@ -82,6 +82,37 @@ class PreferencesDialog:
         )
         full_paths_cb.pack(anchor=tk.W, pady=5)
         
+        # Add a separator
+        ttk.Separator(self.general_frame, orient="horizontal").pack(fill=tk.X, pady=10)
+        
+        # Logging level selection
+        logging_frame = ttk.Frame(self.general_frame)
+        logging_frame.pack(fill=tk.X, pady=5)
+        
+        ttk.Label(logging_frame, text="Logging Level:").pack(side=tk.LEFT, padx=(0, 10))
+        
+        # Get current logging level or default
+        current_level = getattr(self.app, 'logging_level', defaults.DEFAULT_SETTINGS["logging_level"])
+        self.logging_level_var = tk.StringVar(value=current_level)
+        
+        # Create dropdown for logging levels
+        logging_combobox = ttk.Combobox(
+            logging_frame, 
+            textvariable=self.logging_level_var,
+            values=list(defaults.LOGGING_LEVELS.keys()),
+            state="readonly",
+            width=10
+        )
+        logging_combobox.pack(side=tk.LEFT)
+        
+        # Add help text
+        ttk.Label(
+            logging_frame, 
+            text="(Changes will take effect after restart)",
+            font=("TkDefaultFont", 8),
+            foreground="gray"
+        ).pack(side=tk.LEFT, padx=10)
+        
         # Create File Types tab
         self.file_types_frame = ttk.Frame(self.notebook, padding=10)
         self.notebook.add(self.file_types_frame, text="File Types")
@@ -158,6 +189,7 @@ class PreferencesDialog:
         self.app.auto_preview_enabled = self.auto_preview_var.get()
         self.app.auto_save_enabled = self.auto_save_var.get()
         self.app.show_full_paths = self.show_full_paths_var.get()
+        self.app.logging_level = self.logging_level_var.get()
         
         # Update extensions
         new_extensions = {}
