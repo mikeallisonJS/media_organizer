@@ -35,7 +35,7 @@ if ! command -v mediainfo &> /dev/null; then
 fi
 
 # Run the application
-python3 media_organizer.py
+python3 main.py
 
 # Deactivate virtual environment
 deactivate 

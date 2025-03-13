@@ -21,3 +21,6 @@
 [X] make MediaFile class a module
 [] create a help dialog for the app
 [] create an about dialog
+[X] rename media_organizer.py to main.py
+[] make MediaOrganizer class a module
+[] make MediaOrganizerGUI a module

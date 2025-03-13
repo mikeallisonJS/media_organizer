@@ -90,7 +90,7 @@ If the provided scripts don't work, you can set up the environment manually:
 
 4. Run the application:
    ```bash
-   python3 media_organizer.py
+   python3 main.py
    ```
 
 ## Usage

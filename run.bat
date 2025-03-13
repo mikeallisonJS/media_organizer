@@ -39,7 +39,7 @@ if %errorlevel% neq 0 (
 )
 
 :: Run the application
-python media_organizer.py
+python main.py
 
 :: Deactivate virtual environment
 call deactivate
