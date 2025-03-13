@@ -34,7 +34,7 @@ class MediaOrganizerGUI:
     def __init__(self, root):
         """Initialize the GUI."""
         self.root = root
-        self.root.title("Media Organizer")
+        self.root.title(defaults.APP_NAME)
         self.root.geometry(defaults.DEFAULT_WINDOW_SIZES["main_window"])  # Increase default height
         self.root.minsize(800, 800)    # Ensure minimum size
         

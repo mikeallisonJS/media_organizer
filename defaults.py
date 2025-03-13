@@ -9,8 +9,12 @@ Centralizing these values makes the application more maintainable and configurab
 import extensions
 import logging
 
-# Application version
+# Application information
+APP_NAME = "Media Organizer"
 APP_VERSION = "0.1.0"
+APP_AUTHOR = "Mike Allison"
+APP_WEBSITE = "https://mikeallisonjs.com"
+APP_EMAIL = "support@mikeallisonjs.com"
 
 # Default templates for each media type
 DEFAULT_TEMPLATES = {

@@ -20,7 +20,7 @@ class AboutDialog:
         """
         # Create a new top-level window
         self.window = tk.Toplevel(parent)
-        self.window.title("About Media Organizer")
+        self.window.title(f"About {defaults.APP_NAME}")
         self.window.geometry(defaults.DEFAULT_WINDOW_SIZES.get("about_dialog", "500x400"))
         self.window.minsize(500, 400)
         self.window.maxsize(500, 400)
@@ -43,7 +43,7 @@ class AboutDialog:
         # Application name
         app_name_label = ttk.Label(
             content_frame, 
-            text="Media Organizer", 
+            text=defaults.APP_NAME, 
             font=("TkDefaultFont", 16, "bold")
         )
         app_name_label.pack(pady=(0, 5))
@@ -58,7 +58,7 @@ class AboutDialog:
         
         # Description
         description_text = (
-            "Media Organizer is a tool to organize media files based on their metadata. "
+            f"{defaults.APP_NAME} is a tool to organize media files based on their metadata. "
             "It can organize audio, video, image, and eBook files into a structured directory "
             "hierarchy using customizable templates."
         )
@@ -91,7 +91,7 @@ class AboutDialog:
         # Credits
         credits_label = ttk.Label(
             content_frame, 
-            text="Created by Your Name",
+            text=f"Created by {defaults.APP_AUTHOR}",
             font=("TkDefaultFont", 9)
         )
         credits_label.pack(pady=(20, 5))
@@ -104,26 +104,55 @@ class AboutDialog:
         )
         copyright_label.pack(pady=(0, 10))
         
+        # Contact information frame
+        contact_frame = ttk.Frame(content_frame)
+        contact_frame.pack(pady=(0, 20))
+        
         # Website link
-        website_frame = ttk.Frame(content_frame)
-        website_frame.pack(pady=(0, 20))
+        website_frame = ttk.Frame(contact_frame)
+        website_frame.pack(fill=tk.X, pady=2)
         
         website_label = ttk.Label(
             website_frame, 
             text="Website:",
-            font=("TkDefaultFont", 9)
+            font=("TkDefaultFont", 9),
+            width=10,
+            anchor=tk.E
         )
         website_label.pack(side=tk.LEFT, padx=(0, 5))
         
         website_link = ttk.Label(
             website_frame, 
-            text="www.mediaorganizer.com",
+            text=defaults.APP_WEBSITE,
             font=("TkDefaultFont", 9),
             foreground="blue",
             cursor="hand2"
         )
         website_link.pack(side=tk.LEFT)
-        website_link.bind("<Button-1>", lambda e: webbrowser.open("http://www.mediaorganizer.com"))
+        website_link.bind("<Button-1>", lambda e: webbrowser.open(defaults.APP_WEBSITE))
+        
+        # Email link
+        email_frame = ttk.Frame(contact_frame)
+        email_frame.pack(fill=tk.X, pady=2)
+        
+        email_label = ttk.Label(
+            email_frame, 
+            text="Email:",
+            font=("TkDefaultFont", 9),
+            width=10,
+            anchor=tk.E
+        )
+        email_label.pack(side=tk.LEFT, padx=(0, 5))
+        
+        email_link = ttk.Label(
+            email_frame, 
+            text=defaults.APP_EMAIL,
+            font=("TkDefaultFont", 9),
+            foreground="blue",
+            cursor="hand2"
+        )
+        email_link.pack(side=tk.LEFT)
+        email_link.bind("<Button-1>", lambda e: webbrowser.open(f"mailto:{defaults.APP_EMAIL}"))
         
         # Close button
         close_button = ttk.Button(
