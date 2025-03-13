@@ -25,3 +25,4 @@
 [X] make MediaOrganizer class a module
 [X] rename media_organizer_module.py to media_organizer.py
 [] make MediaOrganizerGUI a module
+[X] create a PROJECT.md file for the project that helps ai understand the code and methodologies
