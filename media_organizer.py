@@ -24,6 +24,8 @@ from PIL import Image
 import extensions
 # Import the LogWindow class
 from log_window import LogWindow
+# Import the PreferencesDialog class
+from preferences_dialog import PreferencesDialog
 
 try:
     from pymediainfo import MediaInfo
@@ -1286,7 +1288,19 @@ class MediaOrganizerGUI:
 
     def _show_preferences(self):
         """Show the preferences dialog."""
-        PreferencesDialog(self.root, self)
+        global SUPPORTED_EXTENSIONS
+        preferences = PreferencesDialog(self.root, self, SUPPORTED_EXTENSIONS)
+        
+        # The dialog will handle updating the app's settings directly
+        # We just need to update the SUPPORTED_EXTENSIONS if needed
+        result = preferences._save_preferences
+        if hasattr(result, '__call__'):
+            # If result is a method, we need to call it
+            result = result()
+            
+        if result and 'extensions' in result:
+            # Update the global SUPPORTED_EXTENSIONS
+            SUPPORTED_EXTENSIONS = result['extensions']
     
     def _create_widgets(self):
         """Create the GUI widgets."""
@@ -2489,224 +2503,6 @@ class MediaOrganizerGUI:
                 
         widget.bind("<Enter>", enter)
         widget.bind("<Leave>", leave)
-
-
-class PreferencesDialog:
-    """Dialog for managing application preferences."""
-    
-    def __init__(self, parent, app):
-        """Initialize the preferences dialog."""
-        self.dialog = tk.Toplevel(parent)
-        self.dialog.title("Preferences")
-        self.dialog.geometry("600x500")
-        self.dialog.minsize(600, 500)
-        self.dialog.transient(parent)  # Make it a modal dialog
-        self.dialog.grab_set()  # Make it modal
-        
-        # Store reference to main app
-        self.app = app
-        
-        # Center the window
-        self.dialog.update_idletasks()
-        width = self.dialog.winfo_width()
-        height = self.dialog.winfo_height()
-        x = (self.dialog.winfo_screenwidth() // 2) - (width // 2)
-        y = (self.dialog.winfo_screenheight() // 2) - (height // 2)
-        self.dialog.geometry(f"{width}x{height}+{x}+{y}")
-        
-        # Create the main content frame
-        self.content_frame = ttk.Frame(self.dialog, padding=10)
-        self.content_frame.pack(fill=tk.BOTH, expand=True)
-        
-        # Create notebook for tabs
-        self.notebook = ttk.Notebook(self.content_frame)
-        self.notebook.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
-        
-        # Create General tab
-        self.general_frame = ttk.Frame(self.notebook, padding=10)
-        self.notebook.add(self.general_frame, text="General")
-        
-        # Auto-preview option
-        self.auto_preview_var = tk.BooleanVar(value=self.app.auto_preview_enabled)
-        auto_preview_cb = ttk.Checkbutton(
-            self.general_frame,
-            text="Automatically generate preview when settings change",
-            variable=self.auto_preview_var
-        )
-        auto_preview_cb.pack(anchor=tk.W, pady=5)
-        
-        # Auto-save option
-        self.auto_save_var = tk.BooleanVar(value=getattr(self.app, 'auto_save_enabled', True))
-        auto_save_cb = ttk.Checkbutton(
-            self.general_frame,
-            text="Automatically save settings when inputs change",
-            variable=self.auto_save_var
-        )
-        auto_save_cb.pack(anchor=tk.W, pady=5)
-        
-        # Full path display option
-        self.show_full_paths_var = tk.BooleanVar(value=getattr(self.app, 'show_full_paths', False))
-        full_paths_cb = ttk.Checkbutton(
-            self.general_frame,
-            text="Show full file paths in preview",
-            variable=self.show_full_paths_var
-        )
-        full_paths_cb.pack(anchor=tk.W, pady=5)
-        
-        # Create File Types tab
-        self.file_types_frame = ttk.Frame(self.notebook, padding=10)
-        self.notebook.add(self.file_types_frame, text="File Types")
-        
-        # Create sub-notebook for file type tabs
-        self.file_types_notebook = ttk.Notebook(self.file_types_frame)
-        self.file_types_notebook.pack(fill=tk.BOTH, expand=True)
-        
-        # Create text variables for extensions
-        self.extension_texts = {}
-        
-        # Create sub-tabs for each media type
-        for media_type in ["audio", "video", "image", "ebook"]:
-            frame = ttk.Frame(self.file_types_notebook, padding=10)
-            self.file_types_notebook.add(frame, text=media_type.title())
-            
-            # Add description label
-            ttk.Label(
-                frame,
-                text=f"Enter file extensions for {media_type} files (one per line, with or without dot):",
-                wraplength=400
-            ).pack(anchor=tk.W, pady=(0, 5))
-            
-            # Create text widget with scrollbar for extensions
-            text_frame = ttk.Frame(frame)
-            text_frame.pack(fill=tk.BOTH, expand=True)
-            
-            text_widget = tk.Text(text_frame, height=10, width=40)
-            scrollbar = ttk.Scrollbar(text_frame, orient="vertical", command=text_widget.yview)
-            text_widget.configure(yscrollcommand=scrollbar.set)
-            
-            text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-            
-            # Get current extensions and format them
-            current_extensions = [ext.lstrip(".") for ext in SUPPORTED_EXTENSIONS[media_type]]
-            text_widget.insert("1.0", "\n".join(current_extensions))
-            
-            self.extension_texts[media_type] = text_widget
-            
-            # Add a "Reset to Default" button
-            reset_button = ttk.Button(
-                frame, 
-                text="Reset to Default", 
-                command=lambda m=media_type: self._reset_extensions_to_default(m)
-            )
-            reset_button.pack(anchor=tk.E, pady=5)
-        
-        # Create buttons frame
-        buttons_frame = ttk.Frame(self.content_frame)
-        buttons_frame.pack(fill=tk.X, pady=(0, 10))
-        
-        # Add Save and Cancel buttons
-        save_button = ttk.Button(buttons_frame, text="Save", command=self._save_preferences)
-        save_button.pack(side=tk.RIGHT, padx=5)
-        
-        cancel_button = ttk.Button(buttons_frame, text="Cancel", command=self.dialog.destroy)
-        cancel_button.pack(side=tk.RIGHT, padx=5)
-        
-    def _reset_extensions_to_default(self, media_type):
-        """Reset extensions for a media type to default values."""
-        # Get default extensions from the extensions module
-        default_extensions = [ext.lstrip(".") for ext in extensions.DEFAULT_EXTENSIONS[media_type]]
-        
-        # Clear the text widget
-        self.extension_texts[media_type].delete("1.0", tk.END)
-        
-        # Insert default extensions
-        self.extension_texts[media_type].insert("1.0", "\n".join(default_extensions))
-    
-    def _save_preferences(self):
-        """Save preferences and update the main application."""
-        # Update app settings
-        self.app.auto_preview_enabled = self.auto_preview_var.get()
-        self.app.auto_save_enabled = self.auto_save_var.get()
-        self.app.show_full_paths = self.show_full_paths_var.get()
-        
-        # Update extensions
-        new_extensions = {}
-        for media_type, text_widget in self.extension_texts.items():
-            # Get extensions from text widget
-            extensions = text_widget.get("1.0", "end-1c").split("\n")
-            # Clean up extensions (remove empty lines, add dot if missing)
-            extensions = [ext.strip() for ext in extensions if ext.strip()]
-            extensions = [ext if ext.startswith(".") else f".{ext}" for ext in extensions]
-            new_extensions[media_type] = extensions
-        
-        # Update SUPPORTED_EXTENSIONS
-        global SUPPORTED_EXTENSIONS
-        SUPPORTED_EXTENSIONS = new_extensions
-        
-        # Show a message about restarting
-        messagebox.showinfo("Extensions Updated", 
-                           "Extension changes will be applied after restarting the application.")
-        
-        # Save settings to file
-        self.app._save_settings()
-        
-        # Close the dialog
-        self.dialog.destroy()
-
-    def _update_extension_checkboxes(self):
-        """Update the extension checkboxes in the main window based on SUPPORTED_EXTENSIONS."""
-        # Clear existing extension frames
-        for frame in self.main_frame.winfo_children():
-            if isinstance(frame, ttk.LabelFrame) and frame.winfo_text() == "File Type Filters":
-                frame.destroy()
-
-        # Recreate extension filters frame
-        extensions_frame = ttk.LabelFrame(self.main_frame, text="File Type Filters", padding=5)
-        extensions_frame.pack(fill=tk.X, pady=2)
-
-        # Create a frame for each file type category
-        file_types_frame = ttk.Frame(extensions_frame)
-        file_types_frame.pack(fill=tk.X, pady=2)
-
-        # Clear existing extension variables
-        self.extension_vars = {"audio": {}, "video": {}, "image": {}, "ebook": {}}
-
-        # Recreate frames for each media type
-        for media_type, title in [("audio", "Audio"), ("video", "Video"), 
-                                ("image", "Image"), ("ebook", "eBook")]:
-            type_frame = ttk.LabelFrame(file_types_frame, text=title)
-            type_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
-
-            # Create "Select All" checkbox
-            all_var = tk.BooleanVar(value=True)
-            setattr(self, f"{media_type}_all_var", all_var)
-            all_cb = ttk.Checkbutton(
-                type_frame,
-                text=f"All {title}",
-                variable=all_var,
-                command=lambda t=media_type: self._toggle_all_extensions(t),
-            )
-            all_cb.pack(anchor=tk.W)
-
-            # Create individual checkboxes for extensions
-            extensions_frame = ttk.Frame(type_frame)
-            extensions_frame.pack(fill=tk.X, padx=10)
-
-            for i, ext in enumerate(SUPPORTED_EXTENSIONS[media_type]):
-                ext_name = ext.lstrip(".")
-                var = tk.BooleanVar(value=True)
-                self.extension_vars[media_type][ext] = var
-                cb = ttk.Checkbutton(
-                    extensions_frame,
-                    text=ext_name,
-                    variable=var,
-                    command=self._update_extension_selection,
-                )
-                cb.grid(row=i // 2, column=i % 2, sticky=tk.W, padx=5)
-
-        # Update the layout
-        self.main_frame.update_idletasks()
 
 
 def main():
