@@ -9,7 +9,7 @@
 [] Make Mac & Windows executables
 [] Add a purchase button in the Menubar and a nag screen
 [X] Add an analyze button
-[] don't log to console unless debug env is enabled
+[] only log to console when developing
 [X] add a reset button to log window
 [] come up with a better name for the app
 [] create an app icon
@@ -18,6 +18,6 @@
 [X] make preferences window it's own module
 [X] make a module for all default values
 [X] fix save button in preferences
-[] make MediaFile class a module
+[X] make MediaFile class a module
 [] create a help dialog for the app
 [] create an about dialog
