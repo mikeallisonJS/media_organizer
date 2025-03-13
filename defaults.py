@@ -45,7 +45,7 @@ LOGGING_LEVELS = {
 DEFAULT_WINDOW_SIZES = {
     "main_window": "800x800",
     "preferences_dialog": "600x500",
-    "help_window": "600x400",
+    "help_window": "600x500",
     "log_window": "600x400",
     "about_dialog": "500x450",
 }
