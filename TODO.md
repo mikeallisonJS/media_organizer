@@ -10,7 +10,8 @@
 [] Add a purchase button in the Menubar and a nag screen
 [X] Add an analyze button
 [] don't log to console unless debug env is enabled
-[] add a reset button to log window
+[X] add a reset button to log window
 [] come up with a better name for the app
 [] create an app icon
 [] allow user to select log level
+[] make log window it's own module

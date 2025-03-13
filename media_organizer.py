@@ -2494,6 +2494,7 @@ class LogWindow:
     
     def __init__(self, parent):
         """Initialize the log window."""
+        self.parent = parent
         self.window = tk.Toplevel(parent)
         self.window.title("Media Organizer Logs")
         self.window.geometry("600x400")
@@ -2502,14 +2503,38 @@ class LogWindow:
         # Configure the window to be hidden instead of destroyed when closed
         self.window.protocol("WM_DELETE_WINDOW", self.hide)
         
+        # Create main container frame
+        main_frame = ttk.Frame(self.window)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
         # Create the log text widget
-        self.log_text = tk.Text(self.window, wrap=tk.WORD)
+        self.log_text = tk.Text(main_frame, wrap=tk.WORD)
         self.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
         # Add scrollbar
-        scrollbar = ttk.Scrollbar(self.window, command=self.log_text.yview)
+        scrollbar = ttk.Scrollbar(main_frame, command=self.log_text.yview)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.log_text.config(yscrollcommand=scrollbar.set)
+        
+        # Add button frame at the bottom
+        button_frame = ttk.Frame(self.window)
+        button_frame.pack(fill=tk.X, pady=5, padx=5)
+        
+        # Add shortcut label
+        shortcut_label = ttk.Label(button_frame, text="Shortcut: Ctrl+L")
+        shortcut_label.pack(side=tk.LEFT, padx=5)
+        
+        # Add Clear Logs button
+        clear_button = ttk.Button(
+            button_frame, text="Clear Logs", command=self.clear_logs
+        )
+        clear_button.pack(side=tk.RIGHT)
+        
+        # Add tooltip to the Clear Logs button
+        self._create_tooltip(clear_button, "Clear all log entries (this cannot be undone)")
+        
+        # Add keyboard shortcut (Ctrl+L) to clear logs
+        self.window.bind("<Control-l>", lambda event: self.clear_logs())
         
         # Configure logging to text widget
         self._setup_text_logging()
@@ -2543,6 +2568,15 @@ class LogWindow:
         # Disable editing
         self.log_text.configure(state="disabled")
     
+    def clear_logs(self):
+        """Clear the log text widget."""
+        # Show confirmation dialog
+        if messagebox.askyesno("Confirm Clear", "Are you sure you want to clear all logs?"):
+            self.log_text.configure(state="normal")
+            self.log_text.delete(1.0, tk.END)
+            self.log_text.configure(state="disabled")
+            logger.info("Log window cleared")
+    
     def show(self):
         """Show the log window."""
         self.window.deiconify()
@@ -2551,6 +2585,30 @@ class LogWindow:
     def hide(self):
         """Hide the log window."""
         self.window.withdraw()
+
+    def _create_tooltip(self, widget, text):
+        """Create a tooltip for a widget."""
+        def enter(event):
+            x, y, _, _ = widget.bbox("insert")
+            x += widget.winfo_rootx() + 25
+            y += widget.winfo_rooty() + 25
+            
+            # Create a toplevel window
+            self.tooltip = tk.Toplevel(widget)
+            self.tooltip.wm_overrideredirect(True)
+            self.tooltip.wm_geometry(f"+{x}+{y}")
+            
+            label = ttk.Label(self.tooltip, text=text, justify=tk.LEFT,
+                             background="#ffffe0", relief=tk.SOLID, borderwidth=1,
+                             wraplength=250)
+            label.pack(padx=3, pady=3)
+            
+        def leave(event):
+            if hasattr(self, "tooltip"):
+                self.tooltip.destroy()
+                
+        widget.bind("<Enter>", enter)
+        widget.bind("<Leave>", leave)
 
 
 class PreferencesDialog:
