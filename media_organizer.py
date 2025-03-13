@@ -1319,19 +1319,19 @@ class MediaOrganizerGUI:
     def _show_preferences(self):
         """Show the preferences dialog."""
         global SUPPORTED_EXTENSIONS
-        preferences = PreferencesDialog(self.root, self, SUPPORTED_EXTENSIONS)
         
-        # The dialog will handle updating the app's settings directly
-        # We just need to update the SUPPORTED_EXTENSIONS if needed
-        result = preferences._save_preferences
-        if hasattr(result, '__call__'):
-            # If result is a method, we need to call it
-            result = result()
-            
-        if result and 'extensions' in result:
-            # Update the global SUPPORTED_EXTENSIONS
-            SUPPORTED_EXTENSIONS = result['extensions']
-    
+        # Create a callback function to handle the result from the preferences dialog
+        def on_save(result):
+            if result and 'extensions' in result:
+                # Update the global SUPPORTED_EXTENSIONS
+                global SUPPORTED_EXTENSIONS
+                SUPPORTED_EXTENSIONS = result['extensions']
+                # Save settings to file
+                self._save_settings()
+        
+        # Create the preferences dialog with the callback
+        PreferencesDialog(self.root, self, SUPPORTED_EXTENSIONS, callback=on_save)
+        
     def _create_widgets(self):
         """Create the GUI widgets."""
         # Create a main container frame with three sections

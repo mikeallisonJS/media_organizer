@@ -15,7 +15,7 @@ import defaults
 class PreferencesDialog:
     """Dialog for managing application preferences."""
     
-    def __init__(self, parent, app, supported_extensions):
+    def __init__(self, parent, app, supported_extensions, callback=None):
         """
         Initialize the preferences dialog.
         
@@ -23,6 +23,7 @@ class PreferencesDialog:
             parent: The parent window
             app: The main application instance
             supported_extensions: The dictionary of supported file extensions
+            callback: Function to call with the result when the dialog is closed
         """
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("Preferences")
@@ -34,6 +35,8 @@ class PreferencesDialog:
         # Store reference to main app and extensions
         self.app = app
         self.supported_extensions = supported_extensions
+        self.callback = callback
+        self.result = None
         
         # Center the window
         self.dialog.update_idletasks()
@@ -201,7 +204,14 @@ class PreferencesDialog:
             extensions_list = [ext if ext.startswith(".") else f".{ext}" for ext in extensions_list]
             new_extensions[media_type] = extensions_list
         
-        # Return the result as a dictionary
-        return {
+        # Store the result
+        self.result = {
             'extensions': new_extensions
-        } 
+        }
+        
+        # Call the callback function if provided
+        if self.callback:
+            self.callback(self.result)
+        
+        # Close the dialog
+        self.dialog.destroy() 

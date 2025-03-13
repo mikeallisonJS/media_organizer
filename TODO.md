@@ -17,4 +17,7 @@
 [X] make log window it's own module
 [X] make preferences window it's own module
 [X] make a module for all default values
-[] fix save button in preferences
+[X] fix save button in preferences
+[] make MediaFile class a module
+[] create a help dialog for the app
+[] create an about dialog
