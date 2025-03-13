@@ -14,4 +14,5 @@
 [] come up with a better name for the app
 [] create an app icon
 [] allow user to select log level
-[] make log window it's own module
+[X] make log window it's own module
+[] make preferences window it's own module
