@@ -1,0 +1,125 @@
+# Dependencies
+
+This document lists all dependencies used by the Media Organizer application along with their respective licenses.
+
+## Important License Compatibility Notice
+
+Media Organizer is now proprietary software licensed only to the original purchaser. When using third-party libraries, we must ensure compliance with their license terms. Some dependencies used in this project have licenses that require special attention:
+
+1. **GPL-Licensed Components** (like Mutagen): The GPL license requires that any software which includes GPL-licensed code must also be distributed under the GPL license, which would conflict with our proprietary license. To comply with this:
+
+   - We are considering replacing Mutagen with a more permissively licensed alternative like TinyTag (MIT) or ffmpeg-python (Apache 2.0)
+   - Until this replacement is complete, please be aware that distribution of this software may be subject to GPL requirements
+
+2. **Permissively Licensed Components** (MIT, BSD, Apache): These licenses generally allow inclusion in proprietary software with proper attribution.
+
+Please consult with a legal professional if you have questions about license compliance.
+
+## Required Dependencies
+
+### Python Standard Library
+
+- **tkinter**: Python's standard GUI package (included with Python)
+- **pathlib**: Object-oriented filesystem paths (included with Python)
+- **json**: JSON encoder and decoder (included with Python)
+- **logging**: Logging facility for Python (included with Python)
+- **os**: Miscellaneous operating system interfaces (included with Python)
+- **shutil**: High-level file operations (included with Python)
+- **threading**: Thread-based parallelism (included with Python)
+- **datetime**: Basic date and time types (included with Python)
+- **re**: Regular expression operations (included with Python)
+- **webbrowser**: Convenient web-browser controller (included with Python)
+- **zipfile**: Work with ZIP archives (included with Python)
+- **xml.etree.ElementTree**: XML processing API (included with Python)
+
+### Third-Party Libraries
+
+#### Mutagen
+
+- **Version**: 1.46.0
+- **Description**: Audio metadata tag reader and writer
+- **License**: GPL-2.0
+- **Website**: https://github.com/quodlibet/mutagen
+- **Used for**: Extracting metadata from audio files (MP3, FLAC, MP4, OGG, WAV)
+
+#### Pillow (PIL Fork)
+
+- **Version**: 11.0.0+
+- **Description**: Python Imaging Library
+- **License**: HPND (Historical Permission Notice and Disclaimer)
+- **Website**: https://python-pillow.org/
+- **Used for**: Image processing and metadata extraction
+
+#### pymediainfo
+
+- **Version**: 6.0.1+
+- **Description**: Python wrapper for the MediaInfo library
+- **License**: MIT
+- **Website**: https://github.com/sbraz/pymediainfo
+- **Used for**: Enhanced video metadata extraction
+- **Note**: Requires MediaInfo to be installed on the system
+
+#### Black
+
+- **Version**: 24.2.0+
+- **Description**: The uncompromising Python code formatter
+- **License**: MIT
+- **Website**: https://github.com/psf/black
+- **Used for**: Development only (code formatting)
+
+## Optional Dependencies
+
+#### PyPDF2
+
+- **Description**: PDF toolkit
+- **License**: BSD-3-Clause
+- **Website**: https://github.com/py-pdf/PyPDF2
+- **Used for**: Extracting metadata from PDF files
+- **Note**: If not installed, the application will still work but with limited PDF metadata extraction
+
+#### mobi-python
+
+- **Description**: Python library for working with Kindle MOBI format
+- **License**: Apache-2.0
+- **Website**: https://github.com/kroo/mobi-python
+- **Used for**: Extracting metadata from MOBI/AZW/AZW3 files
+- **Note**: If not installed, the application will still work but with limited MOBI/AZW metadata extraction
+
+## System Dependencies
+
+#### MediaInfo
+
+- **Description**: Library for reading metadata from media files
+- **License**: BSD-2-Clause
+- **Website**: https://mediaarea.net/en/MediaInfo
+- **Installation**:
+  - macOS: `brew install mediainfo`
+  - Windows: Download from [MediaInfo website](https://mediaarea.net/en/MediaInfo/Download/Windows)
+- **Used for**: Enhanced video metadata extraction
+- **Note**: Optional but recommended for better video metadata extraction
+
+## License Information
+
+### GPL-2.0 (GNU General Public License v2.0)
+
+The GPL-2.0 license is a copyleft license that requires anyone who distributes your code or a derivative work to make the source available under the same terms. v2.0 is the second version of the GNU General Public License.
+
+### HPND (Historical Permission Notice and Disclaimer)
+
+The Pillow license is derived from the Python Imaging Library (PIL) license, which is a permissive license similar to the BSD license.
+
+### MIT License
+
+A permissive license that allows for reuse with few restrictions. It permits use, modification, and distribution with minimal requirements to preserve copyright and license notices.
+
+### BSD-3-Clause License
+
+A permissive license similar to the MIT License but with an additional clause that prohibits the use of the name of the copyright holder or contributors to promote derived products without specific permission.
+
+### BSD-2-Clause License
+
+A simplified version of the BSD-3-Clause license, removing the non-endorsement clause.
+
+### Apache-2.0 License
+
+A permissive license that allows for free use, modification, and distribution, but requires preservation of copyright and license notices. It also provides an express grant of patent rights from contributors to users.

@@ -16,6 +16,19 @@ APP_AUTHOR = "Mike Allison"
 APP_WEBSITE = "https://mikeallisonjs.com"
 APP_EMAIL = "support@mikeallisonjs.com"
 
+# License information
+LICENSE_TYPES = {
+    "Standard": {
+        "price": 29.99,
+        "max_machines": 2,
+    },
+    "Professional": {
+        "price": 49.99,
+        "max_machines": 5,
+    }
+}
+TRIAL_PERIOD_DAYS = 30
+
 # Default templates for each media type
 DEFAULT_TEMPLATES = {
     "audio": "{creation_year}/{genre}/{filename}",
@@ -57,6 +70,8 @@ DEFAULT_OPERATION_MODE = "copy"  # Options: "copy", "move", "simulate"
 DEFAULT_PATHS = {
     "settings_file": "media_organizer_settings.json",
     "log_file": "media_organizer.log",
+    "license_file": "media_organizer_license.json",
+    "trial_file": "media_organizer_trial.json",
 }
 
 # Function to get default template for a specific media type

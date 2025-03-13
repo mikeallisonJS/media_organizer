@@ -22,6 +22,7 @@ from media_file import MediaFile
 from media_organizer import MediaOrganizer
 from about_dialog import AboutDialog
 from help_dialog import HelpDialog
+from license_manager import LicenseManager
 
 # Configure logging
 logger = logging.getLogger("MediaOrganizer")
@@ -38,6 +39,22 @@ class MediaOrganizerGUI:
         self.root.title(defaults.APP_NAME)
         self.root.geometry(defaults.DEFAULT_WINDOW_SIZES["main_window"])  # Increase default height
         self.root.minsize(800, 800)    # Ensure minimum size
+        
+        # Initialize license manager
+        self.license_manager = LicenseManager()
+        
+        # Check license status
+        if not self.license_manager.is_valid():
+            # Show activation dialog if not licensed or in trial mode
+            self.license_manager.show_activation_dialog(self.root)
+            # If still not valid after dialog, exit
+            if not self.license_manager.is_valid():
+                messagebox.showerror(
+                    "License Required",
+                    f"{defaults.APP_NAME} requires a valid license or active trial to run."
+                )
+                self.root.destroy()
+                return
         
         # Create a media organizer instance
         self.organizer = MediaOrganizer()
@@ -59,7 +76,7 @@ class MediaOrganizerGUI:
         self.main_frame.pack(fill=tk.BOTH, expand=True)
         
         # Create the menubar
-        self._create_menubar()
+        self._create_menu()
         
         # Create the widgets
         self._create_widgets()
@@ -76,30 +93,37 @@ class MediaOrganizerGUI:
         # Log startup
         logger.info("Media Organizer started")
 
-    def _create_menubar(self):
-        """Create the menubar."""
+    def _create_menu(self):
+        """Create the application menu."""
         menubar = tk.Menu(self.root)
         self.root.config(menu=menubar)
-
-        # View menu
-        view_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="View", menu=view_menu)
-        view_menu.add_command(label="Show Logs", command=self._toggle_logs)
-
-        # Settings menu
-        settings_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="Settings", menu=settings_menu)
-        settings_menu.add_command(label="Preferences...", command=self._show_preferences)
-        settings_menu.add_separator()
-        settings_menu.add_command(label="Reset to Defaults", command=self._reset_settings)
-        settings_menu.add_command(label="Save Settings", command=self._save_settings_manual)
-
+        
+        # File menu
+        file_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="File", menu=file_menu)
+        file_menu.add_command(label="Open Source Directory...", command=self._browse_source)
+        file_menu.add_command(label="Open Output Directory...", command=self._browse_output)
+        file_menu.add_separator()
+        file_menu.add_command(label="Save Settings", command=self._save_settings_manual)
+        file_menu.add_command(label="Reset Settings", command=self._reset_settings)
+        file_menu.add_separator()
+        file_menu.add_command(label="Exit", command=self._on_close)
+        
+        # Tools menu
+        tools_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Tools", menu=tools_menu)
+        tools_menu.add_command(label="Preferences", command=self._show_preferences)
+        tools_menu.add_command(label="View Logs", command=self._toggle_logs)
+        
         # Help menu
         help_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="Help", menu=help_menu)
         help_menu.add_command(label="Help Contents", command=self._show_help)
+        help_menu.add_command(label="Placeholders Help", command=self._show_placeholders_help)
         help_menu.add_separator()
-        help_menu.add_command(label="About Media Organizer", command=self._show_about)
+        help_menu.add_command(label="License Activation", command=self._show_license_activation)
+        help_menu.add_separator()
+        help_menu.add_command(label="About", command=self._show_about)
 
     def _create_widgets(self):
         """Create the GUI widgets."""
@@ -124,10 +148,17 @@ class MediaOrganizerGUI:
         self.progress_var = tk.DoubleVar()
         self.progress_bar = ttk.Progressbar(progress_frame, variable=self.progress_var, maximum=100)
         self.progress_bar.pack(fill=tk.X, pady=2)
-
-        self.status_var = tk.StringVar(value="Ready")
-        status_label = ttk.Label(progress_frame, textvariable=self.status_var)
-        status_label.pack(anchor=tk.W)
+        
+        # Status bar
+        status_frame = ttk.Frame(bottom_frame)
+        status_frame.pack(fill=tk.X, side=tk.BOTTOM, pady=2)
+        
+        self.status_var = tk.StringVar()
+        status_message = self.license_manager.get_status_message()
+        self.status_var.set(f"License: {status_message}")
+        
+        status_label = ttk.Label(status_frame, textvariable=self.status_var, anchor=tk.W)
+        status_label.pack(side=tk.LEFT, padx=5)
 
         self.file_var = tk.StringVar(value="")
         file_label = ttk.Label(progress_frame, textvariable=self.file_var)
@@ -1248,8 +1279,8 @@ class MediaOrganizerGUI:
                 # Apply extension selections
                 if "extensions" in settings:
                     for file_type in ["audio", "video", "image", "ebook"]:
-                        if file_type in settings["extensions"]:
-                            for ext, value in settings["extensions"][file_type].items():
+                        if file_type in settings:
+                            for ext, value in settings[file_type].items():
                                 if ext in self.extension_vars[file_type]:
                                     self.extension_vars[file_type][ext].set(value)
                 
@@ -1342,6 +1373,14 @@ class MediaOrganizerGUI:
     def _show_help(self):
         """Show the Help dialog."""
         HelpDialog(self.root)
+
+    def _show_license_activation(self):
+        """Show the license activation dialog."""
+        self.license_manager.show_activation_dialog(self.root)
+        
+        # Update status bar with license status
+        status_message = self.license_manager.get_status_message()
+        self.status_var.set(f"License: {status_message}")
 
     # Copy all methods from the original MediaOrganizerGUI class
     # ... existing code ... 

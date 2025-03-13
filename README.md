@@ -11,11 +11,20 @@ A cross-platform application to organize media files based on their metadata.
 - Cross-platform compatibility using Python's standard libraries
 - Detailed logging of operations
 
+## Purchasing
+
+Media Organizer is proprietary software available for purchase. For pricing information, licensing details, and how to buy, please see the [PURCHASING.md](PURCHASING.md) file.
+
 ## Supported File Types
 
 - **Audio**: MP3, FLAC, M4A, AAC, OGG, WAV
 - **Video**: MP4, MKV, AVI, MOV, WMV
 - **Images**: JPG, JPEG, PNG, GIF, BMP, TIFF
+- **eBooks**: PDF, EPUB, MOBI, AZW
+
+## Dependencies
+
+Media Organizer relies on several Python libraries to function properly. For a complete list of dependencies and their licenses, please see the [DEPENDENCIES.md](DEPENDENCIES.md) file.
 
 ## Installation
 
@@ -167,4 +176,4 @@ This project includes VSCode configuration for automatic formatting with Black:
 
 ## License
 
-This project is open source and available under the MIT License.
+This software is proprietary and is licensed only to the original purchaser. See the [LICENSE](LICENSE) file for the complete terms and conditions.
