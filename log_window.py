@@ -8,22 +8,25 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import logging
 
+# Import the defaults module
+import defaults
+
 class LogWindow:
     """Separate window for displaying logs."""
     
-    def __init__(self, parent, logger):
+    def __init__(self, parent, logger=None):
         """
         Initialize the log window.
         
         Args:
             parent: The parent window
-            logger: The logger instance to use
+            logger: The logger instance to use (optional)
         """
         self.parent = parent
-        self.logger = logger
+        self.logger = logger or logging.getLogger("MediaOrganizer")
         self.window = tk.Toplevel(parent)
         self.window.title("Media Organizer Logs")
-        self.window.geometry("600x400")
+        self.window.geometry(defaults.DEFAULT_WINDOW_SIZES["log_window"])
         self.window.minsize(400, 300)
         
         # Configure the window to be hidden instead of destroyed when closed

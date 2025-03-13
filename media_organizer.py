@@ -22,6 +22,8 @@ from PIL import Image
 
 # Import the extensions module
 import extensions
+# Import the defaults module
+import defaults
 # Import the LogWindow class
 from log_window import LogWindow
 # Import the PreferencesDialog class
@@ -45,8 +47,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger("MediaOrganizer")
 
-# Initialize SUPPORTED_EXTENSIONS from the extensions module
-SUPPORTED_EXTENSIONS = extensions.DEFAULT_EXTENSIONS.copy()
+# Initialize SUPPORTED_EXTENSIONS from the defaults module
+SUPPORTED_EXTENSIONS = defaults.get_default_extensions()
 
 
 class MediaFile:
@@ -655,15 +657,10 @@ class MediaOrganizer:
     def __init__(self):
         self.source_dir = None
         self.output_dir = None
-        # Default templates for each media type
-        self.templates = {
-            "audio": "{file_type}/{artist}/{album}/{filename}",
-            "video": "{file_type}/{year}/{filename}",
-            "image": "{file_type}/{creation_year}/{creation_month_name}/{filename}",
-            "ebook": "{file_type}/{author}/{title}/{filename}",
-        }
+        # Default templates for each media type from defaults module
+        self.templates = defaults.DEFAULT_TEMPLATES.copy()
         # For backward compatibility
-        self.template = "{file_type}/{artist}/{album}/{filename}"
+        self.template = defaults.DEFAULT_TEMPLATES["audio"]
         self.files_processed = 0
         self.total_files = 0
         self.current_file = ""
@@ -996,31 +993,32 @@ class MediaOrganizer:
                 self.output_entry.delete(0, tk.END)
 
                 # Reset templates to defaults
-                self.template_vars["audio"].set("{file_type}/{artist}/{album}/{filename}")
-                self.template_vars["video"].set("{file_type}/{year}/{filename}")
-                self.template_vars["image"].set(
-                    "{file_type}/{creation_year}/{creation_month_name}/{filename}"
-                )
-                self.template_vars["ebook"].set("{file_type}/{author}/{title}/{filename}")
+                for media_type in ["audio", "video", "image", "ebook"]:
+                    self.template_vars[media_type].set(defaults.DEFAULT_TEMPLATES[media_type])
 
                 # For backward compatibility
-                self.template_var.set("{file_type}/{artist}/{album}/{filename}")
-
+                self.template_var.set(defaults.DEFAULT_TEMPLATES["audio"])
+                
                 # Reset extension checkboxes to checked
                 for file_type in ["audio", "video", "image", "ebook"]:
                     getattr(self, f"{file_type}_all_var").set(True)
                     self._toggle_all_extensions(file_type)
-
+                
+                # Reset settings to defaults
+                self.show_full_paths = defaults.DEFAULT_SETTINGS["show_full_paths"]
+                self.auto_save_enabled = defaults.DEFAULT_SETTINGS["auto_save_enabled"]
+                self.auto_preview_enabled = defaults.DEFAULT_SETTINGS["auto_preview_enabled"]
+                
                 # Clear preview
                 self._clear_preview()
-
+                
                 # Delete config file if it exists
                 if self.config_file.exists():
                     self.config_file.unlink()
                     logger.info(f"Settings file deleted: {self.config_file}")
-
+                
                 self.status_var.set("Settings reset to defaults")
-
+                
             except Exception as e:
                 logger.error(f"Error resetting settings: {e}")
                 messagebox.showerror("Error", f"Failed to reset settings: {str(e)}")
@@ -1068,11 +1066,11 @@ class MediaOrganizer:
         # Create a new top-level window
         help_window = tk.Toplevel(self.root)
         help_window.title("Available Placeholders")
-        help_window.geometry("600x400")
+        help_window.geometry(defaults.DEFAULT_WINDOW_SIZES["help_window"])
         help_window.minsize(600, 400)
         help_window.transient(self.root)  # Make it a modal dialog
         help_window.grab_set()  # Make it modal
-
+        
         # Center the window
         help_window.update_idletasks()
         width = help_window.winfo_width()
@@ -1080,25 +1078,25 @@ class MediaOrganizer:
         x = (help_window.winfo_screenwidth() // 2) - (width // 2)
         y = (help_window.winfo_screenheight() // 2) - (height // 2)
         help_window.geometry(f"{width}x{height}+{x}+{y}")
-
+        
         # Create a frame for the content
         content_frame = ttk.Frame(help_window, padding=20)
         content_frame.pack(fill=tk.BOTH, expand=True)
-
+        
         # Title
         title_label = ttk.Label(
             content_frame, text="Available Placeholders", font=("TkDefaultFont", 14, "bold")
         )
         title_label.pack(pady=(0, 20))
-
+        
         # Create a frame for each category
         categories_frame = ttk.Frame(content_frame)
         categories_frame.pack(fill=tk.BOTH, expand=True)
-
+        
         # Common placeholders
         common_frame = ttk.LabelFrame(categories_frame, text="Common", padding=10)
         common_frame.pack(fill=tk.X, pady=5)
-
+        
         common_placeholders = [
             ("{filename}", "Original filename without extension"),
             ("{extension}", "File extension (e.g., mp3, jpg)"),
@@ -1109,7 +1107,7 @@ class MediaOrganizer:
             ("{creation_month}", "Month of file creation (01-12)"),
             ("{creation_month_name}", "Month name of file creation (January, February, etc.)"),
         ]
-
+        
         for i, (placeholder, description) in enumerate(common_placeholders):
             ttk.Label(common_frame, text=placeholder, width=15, anchor=tk.W).grid(
                 row=i, column=0, sticky=tk.W, padx=5, pady=2
@@ -1117,11 +1115,11 @@ class MediaOrganizer:
             ttk.Label(common_frame, text=description, anchor=tk.W).grid(
                 row=i, column=1, sticky=tk.W, padx=5, pady=2
             )
-
+        
         # Audio placeholders
         audio_frame = ttk.LabelFrame(categories_frame, text="Audio", padding=10)
         audio_frame.pack(fill=tk.X, pady=5)
-
+        
         audio_placeholders = [
             ("{title}", "Song title"),
             ("{artist}", "Artist name"),
@@ -1132,7 +1130,7 @@ class MediaOrganizer:
             ("{duration}", "Song duration"),
             ("{bitrate}", "Audio bitrate"),
         ]
-
+        
         for i, (placeholder, description) in enumerate(audio_placeholders):
             ttk.Label(audio_frame, text=placeholder, width=15, anchor=tk.W).grid(
                 row=i // 2, column=(i % 2) * 2, sticky=tk.W, padx=5, pady=2
@@ -1140,11 +1138,11 @@ class MediaOrganizer:
             ttk.Label(audio_frame, text=description, anchor=tk.W).grid(
                 row=i // 2, column=(i % 2) * 2 + 1, sticky=tk.W, padx=5, pady=2
             )
-
+        
         # Image placeholders
         image_frame = ttk.LabelFrame(categories_frame, text="Image", padding=10)
         image_frame.pack(fill=tk.X, pady=5)
-
+        
         image_placeholders = [
             ("{width}", "Image width in pixels"),
             ("{height}", "Image height in pixels"),
@@ -1153,7 +1151,7 @@ class MediaOrganizer:
             ("{camera_model}", "Camera model"),
             ("{date_taken}", "Date when the photo was taken"),
         ]
-
+        
         for i, (placeholder, description) in enumerate(image_placeholders):
             ttk.Label(image_frame, text=placeholder, width=15, anchor=tk.W).grid(
                 row=i // 2, column=(i % 2) * 2, sticky=tk.W, padx=5, pady=2
@@ -1180,11 +1178,11 @@ class MediaOrganizer:
             ttk.Label(ebook_frame, text=description, anchor=tk.W).grid(
                 row=i // 2, column=(i % 2) * 2 + 1, sticky=tk.W, padx=5, pady=2
             )
-
+        
         # Example usage
         example_frame = ttk.LabelFrame(content_frame, text="Example Templates", padding=10)
         example_frame.pack(fill=tk.X, pady=5)
-
+        
         examples = [
             (
                 "{file_type}/{artist}/{album}/{filename}",
@@ -1203,7 +1201,7 @@ class MediaOrganizer:
                 "Organizes photos by year and month number",
             ),
         ]
-
+        
         for i, (template, description) in enumerate(examples):
             ttk.Label(example_frame, text=template, wraplength=250, anchor=tk.W).grid(
                 row=i, column=0, sticky=tk.W, padx=5, pady=2
@@ -1211,10 +1209,34 @@ class MediaOrganizer:
             ttk.Label(example_frame, text=description, wraplength=300, anchor=tk.W).grid(
                 row=i, column=1, sticky=tk.W, padx=5, pady=2
             )
-
+        
         # Close button
         close_button = ttk.Button(content_frame, text="Close", command=help_window.destroy)
         close_button.pack(pady=20)
+
+    def _create_tooltip(self, widget, text):
+        """Create a tooltip for a widget."""
+        def enter(event):
+            x, y, _, _ = widget.bbox("insert")
+            x += widget.winfo_rootx() + 25
+            y += widget.winfo_rooty() + 25
+            
+            # Create a toplevel window
+            self.tooltip = tk.Toplevel(widget)
+            self.tooltip.wm_overrideredirect(True)
+            self.tooltip.wm_geometry(f"+{x}+{y}")
+            
+            label = ttk.Label(self.tooltip, text=text, justify=tk.LEFT,
+                             background="#ffffe0", relief=tk.SOLID, borderwidth=1,
+                             wraplength=250)
+            label.pack(padx=3, pady=3)
+            
+        def leave(event):
+            if hasattr(self, "tooltip"):
+                self.tooltip.destroy()
+                
+        widget.bind("<Enter>", enter)
+        widget.bind("<Leave>", leave)
 
 
 class MediaOrganizerGUI:
@@ -1224,31 +1246,33 @@ class MediaOrganizerGUI:
         """Initialize the GUI."""
         self.root = root
         self.root.title("Media Organizer")
-        self.root.geometry("800x800")  # Increase default height
-        self.root.minsize(800, 800)    # Increase minimum height
-
-        # Create menubar
-        self._create_menubar()
+        self.root.geometry(defaults.DEFAULT_WINDOW_SIZES["main_window"])  # Increase default height
+        self.root.minsize(800, 800)    # Ensure minimum size
         
-        # Set up the organizer
+        # Create a media organizer instance
         self.organizer = MediaOrganizer()
+        
+        # Initialize settings
+        self.show_full_paths = defaults.DEFAULT_SETTINGS["show_full_paths"]
+        self.auto_save_enabled = defaults.DEFAULT_SETTINGS["auto_save_enabled"]
+        self.auto_preview_enabled = defaults.DEFAULT_SETTINGS["auto_preview_enabled"]
         
         # Create variables for extension filters
         self.extension_vars = {"audio": {}, "video": {}, "image": {}, "ebook": {}}
         
         # Config file path
-        self.config_file = Path.home() / ".media_organizer_config.json"
-        
-        # Always enable auto-preview
-        self.auto_preview_enabled = True
+        self.config_file = Path.home() / defaults.DEFAULT_PATHS["settings_file"]
         
         # Create the main frame
         self.main_frame = ttk.Frame(self.root, padding=10)
         self.main_frame.pack(fill=tk.BOTH, expand=True)
         
+        # Create the menubar
+        self._create_menubar()
+        
         # Create the widgets
         self._create_widgets()
-
+        
         # Create log window
         self.log_window = LogWindow(self.root, logger)
         
@@ -2260,20 +2284,21 @@ class MediaOrganizerGUI:
                 self.output_entry.delete(0, tk.END)
 
                 # Reset templates to defaults
-                self.template_vars["audio"].set("{file_type}/{artist}/{album}/{filename}")
-                self.template_vars["video"].set("{file_type}/{year}/{filename}")
-                self.template_vars["image"].set(
-                    "{file_type}/{creation_year}/{creation_month_name}/{filename}"
-                )
-                self.template_vars["ebook"].set("{file_type}/{author}/{title}/{filename}")
+                for media_type in ["audio", "video", "image", "ebook"]:
+                    self.template_vars[media_type].set(defaults.DEFAULT_TEMPLATES[media_type])
 
                 # For backward compatibility
-                self.template_var.set("{file_type}/{artist}/{album}/{filename}")
+                self.template_var.set(defaults.DEFAULT_TEMPLATES["audio"])
                 
                 # Reset extension checkboxes to checked
                 for file_type in ["audio", "video", "image", "ebook"]:
                     getattr(self, f"{file_type}_all_var").set(True)
                     self._toggle_all_extensions(file_type)
+                
+                # Reset settings to defaults
+                self.show_full_paths = defaults.DEFAULT_SETTINGS["show_full_paths"]
+                self.auto_save_enabled = defaults.DEFAULT_SETTINGS["auto_save_enabled"]
+                self.auto_preview_enabled = defaults.DEFAULT_SETTINGS["auto_preview_enabled"]
                 
                 # Clear preview
                 self._clear_preview()
@@ -2332,7 +2357,7 @@ class MediaOrganizerGUI:
         # Create a new top-level window
         help_window = tk.Toplevel(self.root)
         help_window.title("Available Placeholders")
-        help_window.geometry("600x400")
+        help_window.geometry(defaults.DEFAULT_WINDOW_SIZES["help_window"])
         help_window.minsize(600, 400)
         help_window.transient(self.root)  # Make it a modal dialog
         help_window.grab_set()  # Make it modal

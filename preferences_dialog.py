@@ -9,6 +9,8 @@ from tkinter import ttk, messagebox
 
 # Import the extensions module
 import extensions
+# Import the defaults module
+import defaults
 
 class PreferencesDialog:
     """Dialog for managing application preferences."""
@@ -24,7 +26,7 @@ class PreferencesDialog:
         """
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("Preferences")
-        self.dialog.geometry("600x500")
+        self.dialog.geometry(defaults.DEFAULT_WINDOW_SIZES["preferences_dialog"])
         self.dialog.minsize(600, 500)
         self.dialog.transient(parent)  # Make it a modal dialog
         self.dialog.grab_set()  # Make it modal
@@ -141,8 +143,8 @@ class PreferencesDialog:
         
     def _reset_extensions_to_default(self, media_type):
         """Reset extensions for a media type to default values."""
-        # Get default extensions from the extensions module
-        default_extensions = [ext.lstrip(".") for ext in extensions.DEFAULT_EXTENSIONS[media_type]]
+        # Get default extensions from the defaults module
+        default_extensions = [ext.lstrip(".") for ext in defaults.get_default_extensions()[media_type]]
         
         # Clear the text widget
         self.extension_texts[media_type].delete("1.0", tk.END)
