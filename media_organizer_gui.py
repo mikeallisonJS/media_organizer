@@ -20,6 +20,7 @@ from log_window import LogWindow
 from preferences_dialog import PreferencesDialog
 from media_file import MediaFile
 from media_organizer import MediaOrganizer
+from about_dialog import AboutDialog
 
 # Configure logging
 logger = logging.getLogger("MediaOrganizer")
@@ -91,6 +92,11 @@ class MediaOrganizerGUI:
         settings_menu.add_separator()
         settings_menu.add_command(label="Reset to Defaults", command=self._reset_settings)
         settings_menu.add_command(label="Save Settings", command=self._save_settings_manual)
+
+        # Help menu
+        help_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Help", menu=help_menu)
+        help_menu.add_command(label="About Media Organizer", command=self._show_about)
 
     def _create_widgets(self):
         """Create the GUI widgets."""
@@ -1325,6 +1331,10 @@ class MediaOrganizerGUI:
         self._save_settings()
         # Close the window
         self.root.destroy()
+
+    def _show_about(self):
+        """Show the About dialog."""
+        AboutDialog(self.root)
 
     # Copy all methods from the original MediaOrganizerGUI class
     # ... existing code ... 

@@ -20,7 +20,7 @@
 [X] fix save button in preferences
 [X] make MediaFile class a module
 [] create a help dialog for the app
-[] create an about dialog
+[X] create an about dialog
 [X] rename media_organizer.py to main.py
 [X] make MediaOrganizer class a module
 [X] rename media_organizer_module.py to media_organizer.py

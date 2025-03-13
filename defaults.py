@@ -9,6 +9,9 @@ Centralizing these values makes the application more maintainable and configurab
 import extensions
 import logging
 
+# Application version
+APP_VERSION = "0.1.0"
+
 # Default templates for each media type
 DEFAULT_TEMPLATES = {
     "audio": "{creation_year}/{genre}/{filename}",
@@ -40,6 +43,7 @@ DEFAULT_WINDOW_SIZES = {
     "preferences_dialog": "600x500",
     "help_window": "600x400",
     "log_window": "600x400",
+    "about_dialog": "500x450",
 }
 
 # Default operation mode
