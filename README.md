@@ -5,7 +5,7 @@ A cross-platform application to organize media files based on their metadata.
 ## Features
 
 - Recursively scan directories for media files (audio, video, images)
-- Extract metadata from media files using the mutagen library
+- Extract metadata from media files using the TinyTag library
 - Organize files based on customizable templates
 - User-friendly graphical interface
 - Cross-platform compatibility using Python's standard libraries
@@ -136,7 +136,7 @@ The application uses templates with placeholders to determine how files should b
 ## Requirements
 
 - Python 3.6+
-- mutagen
+- TinyTag
 - Pillow
 - Tkinter (usually comes with Python)
 

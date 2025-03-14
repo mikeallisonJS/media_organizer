@@ -4,17 +4,14 @@ Media File module for Media Organizer application.
 Provides a class for handling media files and extracting metadata.
 """
 
+import os
 import re
 import logging
 from pathlib import Path
 from datetime import datetime
 
 # Import required libraries for metadata extraction
-import mutagen
-from mutagen.mp3 import MP3
-from mutagen.flac import FLAC
-from mutagen.mp4 import MP4
-from mutagen.id3 import ID3
+from tinytag import TinyTag
 from PIL import Image
 
 # Import the defaults module
@@ -86,9 +83,7 @@ class MediaFile:
             logger.error(f"Error extracting metadata from {self.file_path}: {e}")
     
     def _extract_audio_metadata(self):
-        """Extract metadata from audio files."""
-        ext = self.file_path.suffix.lower()
-
+        """Extract metadata from audio files using TinyTag."""
         # Initialize default metadata values
         self.metadata.update(
             {
@@ -105,227 +100,35 @@ class MediaFile:
         )
 
         try:
-            # MP3 files
-            if ext == ".mp3":
-                try:
-                    audio = MP3(self.file_path)
-                    if audio.tags:
-                        id3 = ID3(self.file_path)
-                        if "TIT2" in id3:
-                            self.metadata["title"] = str(id3["TIT2"])
-                        if "TPE1" in id3:
-                            self.metadata["artist"] = str(id3["TPE1"])
-                        if "TALB" in id3:
-                            self.metadata["album"] = str(id3["TALB"])
-                        if "TDRC" in id3:
-                            self.metadata["year"] = str(id3["TDRC"])[:4]  # Extract just the year
-                        if "TCON" in id3:
-                            self.metadata["genre"] = str(id3["TCON"])
-                        if "TRCK" in id3:
-                            self.metadata["track"] = str(id3["TRCK"])
-
-                        # Add audio-specific information
-                        if hasattr(audio, "info"):
-                            duration_seconds = int(audio.info.length)
-                            minutes = duration_seconds // 60
-                            seconds = duration_seconds % 60
-                            self.metadata["duration"] = f"{minutes}:{seconds:02d}"
-
-                            if hasattr(audio.info, "bitrate"):
-                                self.metadata["bitrate"] = f"{audio.info.bitrate // 1000} kbps"
-                            if hasattr(audio.info, "sample_rate"):
-                                self.metadata["sample_rate"] = f"{audio.info.sample_rate // 1000} kHz"
-                except Exception as e:
-                    logger.error(f"Error extracting MP3 metadata from {self.file_path}: {e}")
-
-            # FLAC files
-            elif ext == ".flac":
-                try:
-                    audio = FLAC(self.file_path)
-                    if "title" in audio:
-                        self.metadata["title"] = ", ".join(audio["title"])
-                    if "artist" in audio:
-                        self.metadata["artist"] = ", ".join(audio["artist"])
-                    if "album" in audio:
-                        self.metadata["album"] = ", ".join(audio["album"])
-                    if "date" in audio:
-                        date_value = ", ".join(audio["date"])
-                        # Try to extract just the year
-                        year_match = re.search(r"\d{4}", date_value)
-                        if year_match:
-                            self.metadata["year"] = year_match.group(0)
-                        else:
-                            self.metadata["year"] = date_value
-                    if "genre" in audio:
-                        self.metadata["genre"] = ", ".join(audio["genre"])
-                    if "tracknumber" in audio:
-                        self.metadata["track"] = ", ".join(audio["tracknumber"])
-
-                    # Add audio-specific information
-                    if hasattr(audio, "info"):
-                        duration_seconds = int(audio.info.length)
-                        minutes = duration_seconds // 60
-                        seconds = duration_seconds % 60
-                        self.metadata["duration"] = f"{minutes}:{seconds:02d}"
-
-                        if hasattr(audio.info, "bitrate"):
-                            self.metadata["bitrate"] = f"{audio.info.bitrate // 1000} kbps"
-                        if hasattr(audio.info, "sample_rate"):
-                            self.metadata["sample_rate"] = f"{audio.info.sample_rate // 1000} kHz"
-                except Exception as e:
-                    logger.error(f"Error extracting FLAC metadata from {self.file_path}: {e}")
-
-            # M4A/AAC files
-            elif ext in [".m4a", ".aac"]:
-                try:
-                    audio = MP4(self.file_path)
-                    if "\xa9nam" in audio:
-                        self.metadata["title"] = ", ".join(audio["\xa9nam"])
-                    if "\xa9ART" in audio:
-                        self.metadata["artist"] = ", ".join(audio["\xa9ART"])
-                    if "\xa9alb" in audio:
-                        self.metadata["album"] = ", ".join(audio["\xa9alb"])
-                    if "\xa9day" in audio:
-                        date_value = ", ".join(audio["\xa9day"])
-                        # Try to extract just the year
-                        year_match = re.search(r"\d{4}", date_value)
-                        if year_match:
-                            self.metadata["year"] = year_match.group(0)
-                        else:
-                            self.metadata["year"] = date_value
-                    if "\xa9gen" in audio:
-                        self.metadata["genre"] = ", ".join(audio["\xa9gen"])
-                    if "trkn" in audio:
-                        track_tuple = audio["trkn"][0]
-                        self.metadata["track"] = (
-                            f"{track_tuple[0]}/{track_tuple[1]}"
-                            if len(track_tuple) > 1
-                            else str(track_tuple[0])
-                        )
-                
-                    # Add audio-specific information
-                    if hasattr(audio, "info"):
-                        duration_seconds = int(audio.info.length)
-                        minutes = duration_seconds // 60
-                        seconds = duration_seconds % 60
-                        self.metadata["duration"] = f"{minutes}:{seconds:02d}"
-
-                        if hasattr(audio.info, "bitrate"):
-                            self.metadata["bitrate"] = f"{audio.info.bitrate // 1000} kbps"
-                        if hasattr(audio.info, "sample_rate"):
-                            self.metadata["sample_rate"] = f"{audio.info.sample_rate // 1000} kHz"
-                except Exception as e:
-                    logger.error(f"Error extracting M4A/AAC metadata from {self.file_path}: {e}")
-
-            # OGG files
-            elif ext == ".ogg":
-                try:
-                    from mutagen.oggvorbis import OggVorbis
-
-                    audio = OggVorbis(self.file_path)
-
-                    if "title" in audio:
-                        self.metadata["title"] = ", ".join(audio["title"])
-                    if "artist" in audio:
-                        self.metadata["artist"] = ", ".join(audio["artist"])
-                    if "album" in audio:
-                        self.metadata["album"] = ", ".join(audio["album"])
-                    if "date" in audio:
-                        date_value = ", ".join(audio["date"])
-                        # Try to extract just the year
-                        year_match = re.search(r"\d{4}", date_value)
-                        if year_match:
-                            self.metadata["year"] = year_match.group(0)
-                        else:
-                            self.metadata["year"] = date_value
-                    if "genre" in audio:
-                        self.metadata["genre"] = ", ".join(audio["genre"])
-                    if "tracknumber" in audio:
-                        self.metadata["track"] = ", ".join(audio["tracknumber"])
-
-                    # Add audio-specific information
-                    if hasattr(audio, "info"):
-                        duration_seconds = int(audio.info.length)
-                        minutes = duration_seconds // 60
-                        seconds = duration_seconds % 60
-                        self.metadata["duration"] = f"{minutes}:{seconds:02d}"
-
-                        if hasattr(audio.info, "bitrate"):
-                            self.metadata["bitrate"] = f"{audio.info.bitrate // 1000} kbps"
-                        if hasattr(audio.info, "sample_rate"):
-                            self.metadata["sample_rate"] = f"{audio.info.sample_rate // 1000} kHz"
-                except Exception as e:
-                    logger.error(f"Error extracting OGG metadata from {self.file_path}: {e}")
-
-            # WAV files
-            elif ext == ".wav":
-                try:
-                    from mutagen.wave import WAVE
-
-                    audio = WAVE(self.file_path)
-
-                    # WAV files typically have limited metadata
-                    # Add audio-specific information
-                    if hasattr(audio, "info"):
-                        duration_seconds = int(audio.info.length)
-                        minutes = duration_seconds // 60
-                        seconds = duration_seconds % 60
-                        self.metadata["duration"] = f"{minutes}:{seconds:02d}"
-
-                        if hasattr(audio.info, "bitrate"):
-                            self.metadata["bitrate"] = f"{audio.info.bitrate // 1000} kbps"
-                        if hasattr(audio.info, "sample_rate"):
-                            self.metadata["sample_rate"] = f"{audio.info.sample_rate // 1000} kHz"
-                except Exception as e:
-                    logger.error(f"Error extracting WAV metadata from {self.file_path}: {e}")
-
-            # Generic fallback for other audio formats
-            else:
-                try:
-                    audio = mutagen.File(self.file_path)
-                    if audio is not None:
-                        # Try to extract common metadata fields
-                        for key in audio:
-                            lower_key = key.lower()
-                            if "title" in lower_key:
-                                self.metadata["title"] = str(audio[key][0])
-                            elif "artist" in lower_key:
-                                self.metadata["artist"] = str(audio[key][0])
-                            elif "album" in lower_key:
-                                self.metadata["album"] = str(audio[key][0])
-                            elif "date" in lower_key or "year" in lower_key:
-                                date_value = str(audio[key][0])
-                                # Try to extract just the year
-                                year_match = re.search(r"\d{4}", date_value)
-                                if year_match:
-                                    self.metadata["year"] = year_match.group(0)
-                                else:
-                                    self.metadata["year"] = date_value
-                            elif "genre" in lower_key:
-                                self.metadata["genre"] = str(audio[key][0])
-                            elif "track" in lower_key:
-                                self.metadata["track"] = str(audio[key][0])
-
-                        # Add audio-specific information
-                        if hasattr(audio, "info"):
-                            duration_seconds = int(audio.info.length)
-                            minutes = duration_seconds // 60
-                            seconds = duration_seconds % 60
-                            self.metadata["duration"] = f"{minutes}:{seconds:02d}"
-
-                            if hasattr(audio.info, "bitrate"):
-                                self.metadata["bitrate"] = f"{audio.info.bitrate // 1000} kbps"
-                            if hasattr(audio.info, "sample_rate"):
-                                self.metadata["sample_rate"] = (
-                                    f"{audio.info.sample_rate // 1000} kHz"
-                                )
-                except Exception as e:
-                    logger.error(
-                        f"Error extracting generic audio metadata from {self.file_path}: {e}"
-                    )
-
+            # TinyTag supports MP3, OGG, OPUS, FLAC, WMA, MP4/M4A/AAC, and WAV
+            tag = TinyTag.get(self.file_path)
+            
+            # Extract common metadata
+            if tag.title:
+                self.metadata["title"] = tag.title
+            if tag.artist:
+                self.metadata["artist"] = tag.artist
+            if tag.album:
+                self.metadata["album"] = tag.album
+            if tag.year:
+                self.metadata["year"] = str(tag.year)
+            if tag.genre:
+                self.metadata["genre"] = tag.genre
+            if tag.track:
+                self.metadata["track"] = str(tag.track)
+            
+            # Audio-specific information
+            if tag.duration:
+                minutes = int(tag.duration // 60)
+                seconds = int(tag.duration % 60)
+                self.metadata["duration"] = f"{minutes}:{seconds:02d}"
+            if tag.bitrate:
+                self.metadata["bitrate"] = f"{int(tag.bitrate)} kbps"
+            if tag.samplerate:
+                self.metadata["sample_rate"] = f"{int(tag.samplerate / 1000)} kHz"
+            
             logger.info(f"Extracted audio metadata for {self.file_path}")
-
+            
         except Exception as e:
             logger.error(f"Error in audio metadata extraction for {self.file_path}: {e}")
             # Ensure we have at least basic metadata
@@ -388,6 +191,25 @@ class MediaFile:
             self.metadata["year"] = datetime.fromtimestamp(self.file_path.stat().st_mtime).strftime(
                 "%Y"
             )
+            
+            # Try to use TinyTag for basic video metadata if possible
+            try:
+                # TinyTag has limited support for some video formats
+                tag = TinyTag.get(self.file_path)
+                
+                if tag.title:
+                    self.metadata["title"] = tag.title
+                if tag.artist:
+                    self.metadata["artist"] = tag.artist
+                if tag.year:
+                    self.metadata["year"] = str(tag.year)
+                if tag.duration:
+                    minutes = int(tag.duration // 60)
+                    seconds = int(tag.duration % 60)
+                    self.metadata["duration"] = f"{minutes}:{seconds:02d}"
+            except:
+                # Silently fail if TinyTag can't handle the video format
+                pass
         
     def _extract_image_metadata(self):
         """Extract metadata from image files."""
@@ -506,16 +328,17 @@ class MediaFile:
                                             
                                         identifier = metadata.find('.//dc:identifier', ns)
                                         if identifier is not None and identifier.text:
-                                            # Try to extract ISBN
-                                            if "isbn" in identifier.text.lower():
+                                            # Check if it's an ISBN
+                                            if "isbn" in identifier.get("{http://www.idpf.org/2007/opf}scheme", "").lower() or re.search(r"isbn", identifier.text, re.I):
                                                 self.metadata["isbn"] = identifier.text
                                 break
                 except Exception as e:
                     logger.error(f"Error extracting EPUB metadata from {self.file_path}: {e}")
 
-            # MOBI/AZW/AZW3 files
+            # MOBI files
             elif ext in [".mobi", ".azw", ".azw3"]:
                 try:
+                    # Try to use mobi-python if available
                     import mobi
                     book = mobi.Mobi(self.file_path)
                     book.parse()
@@ -526,111 +349,69 @@ class MediaFile:
                         self.metadata["author"] = book.author
                     if book.publisher:
                         self.metadata["publisher"] = book.publisher
-                    if book.publication_date:
-                        # Try to extract year from publication date
+                    
+                    # Try to extract year from publication date if available
+                    if hasattr(book, "publication_date") and book.publication_date:
                         year_match = re.search(r"\d{4}", book.publication_date)
                         if year_match:
                             self.metadata["year"] = year_match.group(0)
-                    if book.language:
-                        self.metadata["language"] = book.language
+                            
                 except ImportError:
-                    logger.warning("mobi-python not available. Limited MOBI/AZW metadata extraction.")
+                    logger.warning("mobi-python not available. Limited MOBI metadata extraction.")
                 except Exception as e:
-                    logger.error(f"Error extracting MOBI/AZW metadata from {self.file_path}: {e}")
-
-            # FB2 files
-            elif ext == ".fb2":
-                try:
-                    from xml.etree import ElementTree as ET
+                    logger.error(f"Error extracting MOBI metadata from {self.file_path}: {e}")
                     
-                    tree = ET.parse(self.file_path)
-                    root = tree.getroot()
-                    
-                    # Find title info section
-                    title_info = root.find(".//title-info")
-                    if title_info is not None:
-                        book_title = title_info.find(".//book-title")
-                        if book_title is not None and book_title.text:
-                            self.metadata["title"] = book_title.text
-                            
-                        author = title_info.find(".//author")
-                        if author is not None:
-                            first_name = author.find(".//first-name")
-                            last_name = author.find(".//last-name")
-                            author_name = []
-                            if first_name is not None and first_name.text:
-                                author_name.append(first_name.text)
-                            if last_name is not None and last_name.text:
-                                author_name.append(last_name.text)
-                            if author_name:
-                                self.metadata["author"] = " ".join(author_name)
-                                
-                        genre = title_info.find(".//genre")
-                        if genre is not None and genre.text:
-                            self.metadata["genre"] = genre.text
-                            
-                        lang = title_info.find(".//lang")
-                        if lang is not None and lang.text:
-                            self.metadata["language"] = lang.text
-                            
-                        date = title_info.find(".//date")
-                        if date is not None and date.text:
-                            # Try to extract year from date
-                            year_match = re.search(r"\d{4}", date.text)
-                            if year_match:
-                                self.metadata["year"] = year_match.group(0)
-                except Exception as e:
-                    logger.error(f"Error extracting FB2 metadata from {self.file_path}: {e}")
         except Exception as e:
             logger.error(f"Error in ebook metadata extraction for {self.file_path}: {e}")
-            # Ensure we have at least basic metadata
-            if "title" not in self.metadata:
-                self.metadata["title"] = self.file_path.stem
-
+            
     def get_formatted_path(self, template):
         """
-        Generate a formatted path based on the template and metadata.
+        Format the destination path using the template and metadata.
         
-        Template can include placeholders like {artist}, {album}, {year}, etc.
+        Args:
+            template: String template with placeholders for metadata fields
+            
+        Returns:
+            Formatted path string
         """
         try:
-            # Create a dictionary with lowercase keys for case-insensitive matching
-            metadata_lower = {k.lower(): v for k, v in self.metadata.items()}
+            # Replace placeholders with metadata values
+            formatted_path = template
             
-            # Replace placeholders in the template
-            formatted = template
+            # Add file_type to metadata for template use
+            self.metadata["file_type"] = self.file_type
             
-            # Find all placeholders in the template
-            placeholders = re.findall(r"\{([^{}]+)\}", template)
+            # Replace each placeholder with its corresponding metadata value
+            for key, value in self.metadata.items():
+                placeholder = "{" + key + "}"
+                if placeholder in formatted_path:
+                    # Convert value to string and sanitize for use in filenames
+                    str_value = str(value)
+                    # Replace characters that are problematic in file paths
+                    sanitized = re.sub(r'[<>:"/\\|?*]', '_', str_value)
+                    formatted_path = formatted_path.replace(placeholder, sanitized)
             
-            for placeholder in placeholders:
-                # Check if the placeholder exists in metadata (case-insensitive)
-                placeholder_lower = placeholder.lower()
-                if placeholder_lower in metadata_lower:
-                    value = metadata_lower[placeholder_lower]
-                    # Check if the value is empty or None
-                    if value is None or str(value).strip() == "" or str(value).strip() == "Unknown":
-                        # If empty, replace with 'Unknown'
-                        formatted = formatted.replace(f"{{{placeholder}}}", "Unknown")
-                    else:
-                    # Convert to string and sanitize for filesystem
-                        value_str = str(value)
-                    # Replace invalid characters with underscore
-                        value_str = re.sub(r'[<>:"/\\|?*]', "_", value_str)
-                    # Replace placeholder in the template
-                        formatted = formatted.replace(f"{{{placeholder}}}", value_str)
+            # Replace any remaining placeholders with "Unknown"
+            formatted_path = re.sub(r'{[^{}]+}', 'Unknown', formatted_path)
+            
+            # Ensure the path ends with the original filename if not already included
+            if "{filename}" not in template and "{filename}.{extension}" not in template:
+                if formatted_path.endswith(".{extension}"):
+                    # Replace just the extension placeholder
+                    formatted_path = formatted_path.replace(".{extension}", f".{self.metadata['extension']}")
                 else:
-                    # If placeholder not found, replace with 'Unknown'
-                    formatted = formatted.replace(f"{{{placeholder}}}", "Unknown")
-
-            # Clean up any double slashes that might have been created
-            formatted = re.sub(r"//+", "/", formatted)
-
-            # Ensure the path doesn't end with a period (Windows issue)
-            formatted = re.sub(r"\.$", "_", formatted)
+                    # Add the full filename with extension
+                    formatted_path = os.path.join(formatted_path, f"{self.metadata['filename']}")
+            elif "{filename}" in template and "{extension}" not in template:
+                # If filename is included but extension isn't, add the extension
+                formatted_path = formatted_path.replace("{filename}", f"{self.metadata['filename']}")
             
-            return formatted
+            # Clean up any double slashes or other path issues
+            formatted_path = os.path.normpath(formatted_path)
+            
+            return formatted_path
             
         except Exception as e:
-            logger.error(f"Error formatting path with template {template}: {e}")
-            return str(self.file_path.name)  # Return just the filename as a fallback 
+            logger.error(f"Error formatting path: {e}")
+            # Fallback to a safe default
+            return os.path.join(self.file_type, self.metadata["filename"]) 

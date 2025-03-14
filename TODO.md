@@ -4,3 +4,5 @@
 [] only log to console when developing
 [] come up with a better name for the app
 [] create an app icon
+[x] Replace Mutagen (GPL) with TinyTag (MIT) for license compatibility
+[] Allow selection of files in preview table

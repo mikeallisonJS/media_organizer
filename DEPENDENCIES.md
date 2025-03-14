@@ -6,10 +6,9 @@ This document lists all dependencies used by the Media Organizer application alo
 
 Media Organizer is now proprietary software licensed only to the original purchaser. When using third-party libraries, we must ensure compliance with their license terms. Some dependencies used in this project have licenses that require special attention:
 
-1. **GPL-Licensed Components** (like Mutagen): The GPL license requires that any software which includes GPL-licensed code must also be distributed under the GPL license, which would conflict with our proprietary license. To comply with this:
+1. **GPL-Licensed Components**: The GPL license requires that any software which includes GPL-licensed code must also be distributed under the GPL license, which would conflict with our proprietary license. We have replaced GPL-licensed components with permissively licensed alternatives:
 
-   - We are considering replacing Mutagen with a more permissively licensed alternative like TinyTag (MIT) or ffmpeg-python (Apache 2.0)
-   - Until this replacement is complete, please be aware that distribution of this software may be subject to GPL requirements
+   - Replaced Mutagen (GPL-2.0) with TinyTag (MIT) for audio metadata extraction
 
 2. **Permissively Licensed Components** (MIT, BSD, Apache): These licenses generally allow inclusion in proprietary software with proper attribution.
 
@@ -34,12 +33,12 @@ Please consult with a legal professional if you have questions about license com
 
 ### Third-Party Libraries
 
-#### Mutagen
+#### TinyTag
 
-- **Version**: 1.46.0
-- **Description**: Audio metadata tag reader and writer
-- **License**: GPL-2.0
-- **Website**: https://github.com/quodlibet/mutagen
+- **Version**: 2.1.0
+- **Description**: A library for reading music meta data of MP3, OGG, FLAC, WAV and MP4 files
+- **License**: MIT
+- **Website**: https://github.com/devsnd/tinytag
 - **Used for**: Extracting metadata from audio files (MP3, FLAC, MP4, OGG, WAV)
 
 #### Pillow (PIL Fork)
@@ -100,17 +99,13 @@ Please consult with a legal professional if you have questions about license com
 
 ## License Information
 
-### GPL-2.0 (GNU General Public License v2.0)
+### MIT License
 
-The GPL-2.0 license is a copyleft license that requires anyone who distributes your code or a derivative work to make the source available under the same terms. v2.0 is the second version of the GNU General Public License.
+A permissive license that allows for reuse with few restrictions. It permits use, modification, and distribution with minimal requirements to preserve copyright and license notices.
 
 ### HPND (Historical Permission Notice and Disclaimer)
 
 The Pillow license is derived from the Python Imaging Library (PIL) license, which is a permissive license similar to the BSD license.
-
-### MIT License
-
-A permissive license that allows for reuse with few restrictions. It permits use, modification, and distribution with minimal requirements to preserve copyright and license notices.
 
 ### BSD-3-Clause License
 
