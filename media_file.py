@@ -259,7 +259,7 @@ class MediaFile:
             # PDF files
             if ext == ".pdf":
                 try:
-                    from PyPDF2 import PdfReader
+                    from pypdf import PdfReader
                     reader = PdfReader(self.file_path)
                     info = reader.metadata
                     if info:
@@ -276,7 +276,7 @@ class MediaFile:
                             if year_match:
                                 self.metadata["year"] = year_match.group(1)
                 except ImportError:
-                    logger.warning("PyPDF2 not available. Limited PDF metadata extraction.")
+                    logger.warning("PyPDF not available. Limited PDF metadata extraction.")
                 except Exception as e:
                     logger.error(f"Error extracting PDF metadata from {self.file_path}: {e}")
 

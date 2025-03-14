@@ -2,15 +2,11 @@
 
 This document lists all dependencies used by the Media Organizer application along with their respective licenses.
 
-## Important License Compatibility Notice
+## License Compatibility Notice
 
-Media Organizer is now proprietary software licensed only to the original purchaser. When using third-party libraries, we must ensure compliance with their license terms. Some dependencies used in this project have licenses that require special attention:
+Media Organizer is proprietary software licensed only to the original purchaser. When using third-party libraries, we ensure compliance with their license terms by selecting components with permissive licenses that allow inclusion in proprietary software.
 
-1. **GPL-Licensed Components**: The GPL license requires that any software which includes GPL-licensed code must also be distributed under the GPL license, which would conflict with our proprietary license. We have replaced GPL-licensed components with permissively licensed alternatives:
-
-   - Replaced Mutagen (GPL-2.0) with TinyTag (MIT) for audio metadata extraction
-
-2. **Permissively Licensed Components** (MIT, BSD, Apache): These licenses generally allow inclusion in proprietary software with proper attribution.
+All dependencies used in this application are under permissive licenses (MIT, BSD, Apache) which generally allow inclusion in proprietary software with proper attribution.
 
 Please consult with a legal professional if you have questions about license compliance.
 
@@ -68,11 +64,11 @@ Please consult with a legal professional if you have questions about license com
 
 ## Optional Dependencies
 
-#### PyPDF2
+#### PyPDF
 
-- **Description**: PDF toolkit
+- **Description**: PDF toolkit for reading and manipulating PDF files
 - **License**: BSD-3-Clause
-- **Website**: https://github.com/py-pdf/PyPDF2
+- **Website**: https://github.com/py-pdf/pypdf
 - **Used for**: Extracting metadata from PDF files
 - **Note**: If not installed, the application will still work but with limited PDF metadata extraction
 

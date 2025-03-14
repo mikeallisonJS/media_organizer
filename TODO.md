@@ -5,4 +5,6 @@
 [] come up with a better name for the app
 [] create an app icon
 [x] Replace Mutagen (GPL) with TinyTag (MIT) for license compatibility
+[x] Replace PyPDF2 with PyPDF for better PDF support
 [] Allow selection of files in preview table
+[] Add exclude unknown option to preview table
