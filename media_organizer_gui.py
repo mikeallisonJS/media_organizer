@@ -170,12 +170,12 @@ class MediaOrganizerGUI:
 
         # Replace single button with Copy and Move buttons
         self.copy_button = ttk.Button(
-            buttons_frame, text="Copy Files", command=lambda: self._start_organization("copy")
+            buttons_frame, text="Copy All", command=lambda: self._start_organization("copy")
         )
         self.copy_button.pack(side=tk.LEFT, padx=5)
 
         self.move_button = ttk.Button(
-            buttons_frame, text="Move Files", command=lambda: self._start_organization("move")
+            buttons_frame, text="Move All", command=lambda: self._start_organization("move")
         )
         self.move_button.pack(side=tk.LEFT, padx=5)
 
@@ -505,6 +505,34 @@ class MediaOrganizerGUI:
         analyze_button.pack(side=tk.LEFT, padx=5)
         self._create_tooltip(analyze_button, "Refresh the preview based on current settings")
         
+        # Add Copy Selected button
+        copy_selected_button = ttk.Button(
+            preview_button_frame, text="Copy Selected", command=lambda: self._process_selected_files("copy")
+        )
+        copy_selected_button.pack(side=tk.LEFT, padx=5)
+        self._create_tooltip(copy_selected_button, "Copy only the selected files to the destination")
+        
+        # Add Move Selected button
+        move_selected_button = ttk.Button(
+            preview_button_frame, text="Move Selected", command=lambda: self._process_selected_files("move")
+        )
+        move_selected_button.pack(side=tk.LEFT, padx=5)
+        self._create_tooltip(move_selected_button, "Move only the selected files to the destination")
+        
+        # Add Select All button
+        select_all_button = ttk.Button(
+            preview_button_frame, text="Select All", command=self._select_all_files
+        )
+        select_all_button.pack(side=tk.LEFT, padx=5)
+        self._create_tooltip(select_all_button, "Select all files in the preview")
+        
+        # Add Deselect All button
+        deselect_all_button = ttk.Button(
+            preview_button_frame, text="Deselect All", command=self._deselect_all_files
+        )
+        deselect_all_button.pack(side=tk.LEFT, padx=5)
+        self._create_tooltip(deselect_all_button, "Deselect all files in the preview")
+        
         # Preview table with scrollbars
         preview_container = ttk.Frame(preview_frame)
         preview_container.pack(fill=tk.BOTH, expand=True)
@@ -512,20 +540,27 @@ class MediaOrganizerGUI:
         # Create the treeview
         self.preview_tree = ttk.Treeview(
             preview_container,
-            columns=("source", "destination"),
+            columns=("selected", "source", "destination"),
             show="headings",
-            selectmode="browse"
+            selectmode="extended"  # Allow multiple selections
         )
         
         # Define the columns
+        self.preview_tree.heading("selected", text="Select ☑")
         self.preview_tree.heading("source", text="Source Path")
         self.preview_tree.heading("destination", text="Destination Path")
         
-        # Configure column widths (both columns get equal width)
+        # Configure column widths
         preview_container.update_idletasks()  # Ensure container has been drawn
         width = preview_container.winfo_width()
-        self.preview_tree.column("source", width=width//2, stretch=True)
-        self.preview_tree.column("destination", width=width//2, stretch=True)
+        self.preview_tree.column("selected", width=60, stretch=False)  # Fixed width for checkbox column
+        self.preview_tree.column("source", width=(width-60)//2, stretch=True)
+        self.preview_tree.column("destination", width=(width-60)//2, stretch=True)
+
+        # Add click event to toggle selection
+        self.preview_tree.bind("<ButtonRelease-1>", self._toggle_selection)
+        # Keep double-click event as a backup
+        self.preview_tree.bind("<Double-1>", self._toggle_selection)
 
         # Add scrollbars
         preview_scrollbar_y = ttk.Scrollbar(
@@ -740,8 +775,8 @@ class MediaOrganizerGUI:
                             display_source = str(file_path)
                             display_dest = str(self.organizer.output_dir / rel_path)
                     
-                    # Add to preview data
-                    preview_data.append((display_source, display_dest))
+                    # Add to preview data with the full file path
+                    preview_data.append((display_source, display_dest, str(file_path)))
                     
                 except Exception as e:
                     logger.error(f"Error generating preview for {file_path}: {e}")
@@ -756,9 +791,25 @@ class MediaOrganizerGUI:
 
     def _update_preview_results(self, preview_data, count):
         """Update the preview treeview with results from the preview thread."""
+        # Clear existing items
+        for item in self.preview_tree.get_children():
+            self.preview_tree.delete(item)
+            
+        # Store the full file paths for later processing
+        self.preview_files = {}
+        
         # Insert preview data into treeview
-        for display_source, display_dest in preview_data:
-            self.preview_tree.insert("", "end", values=(display_source, display_dest))
+        for i, (display_source, display_dest, full_path) in enumerate(preview_data):
+            # Use a checkbox for selection (initially unchecked)
+            item_id = self.preview_tree.insert("", "end", values=("☐", display_source, display_dest))
+            
+            # Store the full file path for later processing
+            self.preview_files[item_id] = {
+                "source_path": display_source,
+                "dest_path": display_dest,
+                "selected": False,
+                "full_path": full_path
+            }
 
         # Update status
         if count == 0:
@@ -767,9 +818,9 @@ class MediaOrganizerGUI:
         else:
             # Count files by media type
             media_types = {}
-            for file_path, _ in preview_data:
+            for display_source, _, full_path in preview_data:
                 # Get file extension
-                ext = os.path.splitext(file_path)[1].lower()
+                ext = os.path.splitext(full_path)[1].lower()
                 # Determine media type
                 media_type = None
                 for type_name, extensions in SUPPORTED_EXTENSIONS.items():
@@ -1448,6 +1499,182 @@ class MediaOrganizerGUI:
         # Update status bar with license status
         status_message = self.license_manager.get_status_message()
         self.status_var.set(f"License: {status_message}")
+
+    def _toggle_selection(self, event):
+        """Toggle selection of a file in the preview treeview when clicked."""
+        # Get the item that was clicked
+        region = self.preview_tree.identify_region(event.x, event.y)
+        if region != "cell":
+            return
+            
+        item = self.preview_tree.identify_row(event.y)
+        if not item:
+            return
+            
+        # Get the column that was clicked
+        column = self.preview_tree.identify_column(event.x)
+        column_index = int(column.replace('#', '')) - 1
+        
+        # Only toggle if the checkbox column was clicked
+        if column_index == 0:
+            # Toggle the checkbox
+            values = list(self.preview_tree.item(item, "values"))
+            if values[0] == "☐":
+                values[0] = "☑"
+                self.preview_files[item]["selected"] = True
+            else:
+                values[0] = "☐"
+                self.preview_files[item]["selected"] = False
+                
+            # Update the item
+            self.preview_tree.item(item, values=values)
+            
+    def _select_all_files(self):
+        """Select all files in the preview treeview."""
+        for item in self.preview_tree.get_children():
+            values = list(self.preview_tree.item(item, "values"))
+            values[0] = "☑"
+            self.preview_tree.item(item, values=values)
+            self.preview_files[item]["selected"] = True
+            
+    def _deselect_all_files(self):
+        """Deselect all files in the preview treeview."""
+        for item in self.preview_tree.get_children():
+            values = list(self.preview_tree.item(item, "values"))
+            values[0] = "☐"
+            self.preview_tree.item(item, values=values)
+            self.preview_files[item]["selected"] = False
+            
+    def _process_selected_files(self, mode):
+        """Process only the selected files in the preview treeview."""
+        # Get the source and output directories
+        source_dir = self.source_entry.get().strip()
+        output_dir = self.output_entry.get().strip()
+        
+        if not source_dir or not output_dir:
+            messagebox.showerror("Error", "Please select both source and output directories.")
+            return
+            
+        if not os.path.exists(source_dir):
+            messagebox.showerror("Error", "Source directory does not exist.")
+            return
+            
+        # Create output directory if it doesn't exist
+        try:
+            os.makedirs(output_dir, exist_ok=True)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to create output directory: {str(e)}")
+            return
+            
+        # Get selected files
+        selected_files = []
+        for item, data in self.preview_files.items():
+            if data["selected"]:
+                # Use the full_path for source and dest_path for destination
+                selected_files.append((data["full_path"], data["dest_path"]))
+                
+        if not selected_files:
+            messagebox.showinfo("Info", "No files selected for processing.")
+            return
+            
+        # Confirm move operation
+        if mode == "move" and not messagebox.askyesno(
+            "Confirm Move Operation",
+            f"Moving {len(selected_files)} files will remove them from the source directory. Continue?",
+        ):
+            return
+            
+        # Configure organizer
+        self.organizer.set_source_dir(source_dir)
+        self.organizer.set_output_dir(output_dir)
+        self.organizer.set_operation_mode(mode)
+        
+        # Start processing in a separate thread
+        threading.Thread(
+            target=self._process_selected_files_thread,
+            args=(selected_files, mode),
+            daemon=True
+        ).start()
+        
+    def _process_selected_files_thread(self, selected_files, mode):
+        """Process the selected files in a separate thread."""
+        try:
+            # Update UI
+            self.root.after(0, lambda: self._update_ui_for_processing(True))
+            
+            # Get the output path
+            output_path = Path(self.organizer.output_dir)
+            
+            # Process each selected file
+            total_files = len(selected_files)
+            processed = 0
+            
+            for source_path, dest_rel in selected_files:
+                if self.organizer.stop_requested:
+                    logger.info("Processing stopped by user")
+                    break
+                    
+                try:
+                    # Convert paths
+                    source_file = Path(source_path)
+                    
+                    # For destination, check if it's a relative or absolute path
+                    if os.path.isabs(dest_rel):
+                        dest_file = Path(dest_rel)
+                    else:
+                        dest_file = output_path / dest_rel
+                    
+                    # Create destination directory if it doesn't exist
+                    os.makedirs(dest_file.parent, exist_ok=True)
+                    
+                    # Copy or move the file
+                    if mode == "copy":
+                        shutil.copy2(source_file, dest_file)
+                        logger.info(f"Copied {source_file} to {dest_file}")
+                    else:  # move mode
+                        shutil.move(source_file, dest_file)
+                        logger.info(f"Moved {source_file} to {dest_file}")
+                        
+                except Exception as e:
+                    logger.error(f"Error processing file {source_path}: {e}")
+                    
+                # Update progress
+                processed += 1
+                self.root.after(0, lambda p=processed, t=total_files, f=source_path: 
+                               self._update_progress(p, t, f))
+                
+            # Complete
+            self.root.after(0, lambda: self._update_progress(processed, total_files, "Complete"))
+            operation_name = "copy" if mode == "copy" else "move"
+            logger.info(f"{operation_name.capitalize()} operation complete. Processed {processed} files.")
+            
+            # Refresh the preview if files were moved to show current state
+            if mode == "move" and processed > 0:
+                self.root.after(500, self._generate_preview)
+            
+        except Exception as e:
+            logger.error(f"Error during processing: {e}")
+            error_msg = str(e) if str(e) else "Unknown error"
+            self.root.after(0, lambda msg=error_msg: messagebox.showerror("Error", f"An error occurred during processing: {msg}"))
+        finally:
+            # Update UI
+            self.root.after(0, lambda: self._update_ui_for_processing(False))
+            
+    def _update_ui_for_processing(self, is_processing):
+        """Update the UI elements for processing state."""
+        if is_processing:
+            # Disable buttons during processing
+            self.copy_button.config(state=tk.DISABLED)
+            self.move_button.config(state=tk.DISABLED)
+            self.stop_button.config(state=tk.NORMAL)
+            self.progress_var.set(0)
+            self.status_var.set("Processing selected files...")
+            self.file_var.set("")
+        else:
+            # Re-enable buttons after processing
+            self.copy_button.config(state=tk.NORMAL)
+            self.move_button.config(state=tk.NORMAL)
+            self.stop_button.config(state=tk.DISABLED)
 
     # Copy all methods from the original MediaOrganizerGUI class
     # ... existing code ... 

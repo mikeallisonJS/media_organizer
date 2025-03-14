@@ -138,7 +138,7 @@ class HelpDialog:
             ("5. Generate Preview", 
              "Click the 'Analyze' button to see a preview of how your files will be organized."),
             ("6. Start Organization", 
-             "Click 'Copy Files' to copy files to the new structure, or 'Move Files' to move them.")
+             "Click 'Copy All' to copy files to the new structure, or 'Move All' to move them.")
         ]
         
         for i, (title, description) in enumerate(steps):
@@ -513,8 +513,8 @@ class HelpDialog:
         tips = [
             ("Preview Before Organizing", 
              "Always use the 'Analyze' button to preview how your files will be organized before starting the actual organization process."),
-            ("Use Copy Instead of Move Initially", 
-             "When first using the application, use the 'Copy Files' option instead of 'Move Files' to ensure your original files remain intact until you're confident with the results."),
+            ("Backup Your Files", 
+             "When first using the application, use the 'Copy All' option instead of 'Move All' to ensure your original files remain intact until you're confident with the results."),
             ("Customize Templates for Each Media Type", 
              "Different media types have different metadata. Use the tabs in the 'Organization Templates' section to set appropriate templates for each type."),
             ("Use the Placeholders Help", 

@@ -5,4 +5,3 @@
 [] come up with a better name for the app
 [] create an app icon
 [] Allow selection of files in preview table
-[x] Add exclude unknown template option to preview table (defaults to True)
