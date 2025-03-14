@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Script to find and document unused code in the Media Organizer project.
+Script to find and document unused code in the Archimedius project.
 Uses Vulture to identify potentially unused code and generates a report.
 """
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Log Window module for Media Organizer application.
+Log Window module for Archimedius application.
 Provides a separate window for displaying and managing application logs.
 """
 
@@ -25,7 +25,7 @@ class LogWindow:
         self.parent = parent
         self.logger = logger or logging.getLogger("MediaOrganizer")
         self.window = tk.Toplevel(parent)
-        self.window.title("Media Organizer Logs")
+        self.window.title("Archimedius Logs")
         self.window.geometry(defaults.DEFAULT_WINDOW_SIZES["log_window"])
         self.window.minsize(400, 300)
         

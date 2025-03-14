@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-About Dialog for the Media Organizer application.
+About Dialog for the Archimedius application.
 Displays information about the application, version, and credits.
 """
 
@@ -10,7 +10,7 @@ import webbrowser
 import defaults
 
 class AboutDialog:
-    """Dialog window showing information about the Media Organizer application."""
+    """Dialog window showing information about the Archimedius application."""
     
     def __init__(self, parent):
         """Initialize the About dialog.

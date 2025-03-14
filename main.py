@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Media Organizer - A tool to organize media files based on metadata.
+Archimedius - A tool to organize media files based on metadata.
 """
 
 import logging
@@ -10,15 +10,15 @@ import json
 
 # Import application modules
 import defaults
-from media_organizer_gui import MediaOrganizerGUI
+from archimedius_gui import ArchimediusGUI
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[logging.StreamHandler(), logging.FileHandler("media_organizer.log")],
+    handlers=[logging.StreamHandler(), logging.FileHandler("archimedius.log")],
 )
-logger = logging.getLogger("MediaOrganizer")
+logger = logging.getLogger("Archimedius")
 
 # Set PyPDF logger to ERROR level to suppress warnings
 logging.getLogger("pypdf").setLevel(logging.ERROR)
@@ -45,7 +45,7 @@ def main():
             logger.error(f"Error loading logging level from settings: {e}")
     
     root = tk.Tk()
-    app = MediaOrganizerGUI(root)
+    app = ArchimediusGUI(root)
     root.mainloop()
 
 

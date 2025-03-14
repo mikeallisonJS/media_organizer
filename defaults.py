@@ -1,5 +1,5 @@
 """
-Defaults module for Media Organizer.
+Defaults module for Archimedius.
 
 This module defines all default values used throughout the application.
 Centralizing these values makes the application more maintainable and configurable.
@@ -10,7 +10,7 @@ import extensions
 import logging
 
 # Application information
-APP_NAME = "Media Organizer"
+APP_NAME = "Archimedius"
 APP_VERSION = "0.1.0"
 APP_AUTHOR = "Mike Allison"
 APP_WEBSITE = "https://mikeallisonjs.com"
@@ -64,10 +64,10 @@ DEFAULT_WINDOW_SIZES = {
 
 # Default file paths
 DEFAULT_PATHS = {
-    "settings_file": "media_organizer_settings.json",
-    "log_file": "media_organizer.log",
-    "license_file": "media_organizer_license.json",
-    "trial_file": "media_organizer_trial.json",
+    "settings_file": "archimedius_settings.json",
+    "log_file": "archimedius.log",
+    "license_file": "archimedius_license.json",
+    "trial_file": "archimedius_trial.json",
 }
 
 # Function to get all default extensions

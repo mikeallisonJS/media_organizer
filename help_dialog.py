@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Help Dialog for the Media Organizer application.
-Provides comprehensive help information about using the application.
+Help Dialog for the Archimedius application.
+Provides a comprehensive help system for users.
 """
 
 import tkinter as tk
@@ -10,7 +10,7 @@ import webbrowser
 import defaults
 
 class HelpDialog:
-    """Dialog window showing help information for the Media Organizer application."""
+    """Dialog window showing help information for the Archimedius application."""
     
     def __init__(self, parent):
         """Initialize the Help dialog.
@@ -104,7 +104,7 @@ class HelpDialog:
         # Title
         title_label = ttk.Label(
             scrollable_frame,
-            text="Getting Started with Media Organizer",
+            text="Getting Started with Archimedius",
             font=("TkDefaultFont", 12, "bold")
         )
         title_label.pack(pady=(0, 10), anchor="w")
@@ -499,7 +499,7 @@ class HelpDialog:
         
         # Introduction
         intro_text = (
-            "Here are some helpful tips to get the most out of Media Organizer."
+            "Here are some helpful tips to get the most out of Archimedius."
         )
         intro_label = ttk.Label(
             tab,
@@ -567,7 +567,7 @@ class HelpDialog:
         
         # Introduction
         intro_text = (
-            "If you encounter issues while using Media Organizer, here are solutions to some common problems."
+            "If you encounter issues while using Archimedius, here are solutions to some common problems."
         )
         intro_label = ttk.Label(
             tab,

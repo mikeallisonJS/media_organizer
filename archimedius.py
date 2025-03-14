@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Media Organizer module - Core functionality for organizing media files.
+Archimedius - Core module for organizing media files.
+This module contains the main logic for finding and organizing media files.
 """
 
 import os
@@ -19,10 +20,10 @@ import defaults
 import extensions
 
 # Configure logging
-logger = logging.getLogger("MediaOrganizer")
+logger = logging.getLogger("Archimedius")
 
-class MediaOrganizer:
-    """Class to organize media files based on metadata."""
+class Archimedius:
+    """Class for organizing media files based on metadata."""
     
     def __init__(self):
         self.source_dir = None

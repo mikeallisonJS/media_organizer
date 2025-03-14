@@ -1,4 +1,4 @@
-# Media Organizer
+# Archimedius
 
 A cross-platform application to organize media files based on their metadata.
 
@@ -13,7 +13,7 @@ A cross-platform application to organize media files based on their metadata.
 
 ## Purchasing
 
-Media Organizer is proprietary software available for purchase. For pricing information, licensing details, and how to buy, please see the [PURCHASING.md](PURCHASING.md) file.
+Archimedius is proprietary software available for purchase. For pricing information, licensing details, and how to buy, please see the [PURCHASING.md](PURCHASING.md) file.
 
 ## Supported File Types
 
@@ -24,7 +24,7 @@ Media Organizer is proprietary software available for purchase. For pricing info
 
 ## Dependencies
 
-Media Organizer relies on several Python libraries to function properly. For a complete list of dependencies and their licenses, please see the [DEPENDENCIES.md](DEPENDENCIES.md) file.
+Archimedius relies on several Python libraries to function properly. For a complete list of dependencies and their licenses, please see the [DEPENDENCIES.md](DEPENDENCIES.md) file.
 
 ## Installation
 
@@ -77,18 +77,18 @@ If the provided scripts don't work, you can set up the environment manually:
 1. Create a virtual environment:
 
    ```bash
-   python3 -m venv media_organizer_venv
+   python3 -m venv archimedius_venv
    ```
 
 2. Activate the virtual environment:
 
    - On macOS/Linux:
      ```bash
-     source media_organizer_venv/bin/activate
+     source archimedius_venv/bin/activate
      ```
    - On Windows:
      ```
-     media_organizer_venv\Scripts\activate
+     archimedius_venv\Scripts\activate
      ```
 
 3. Install the required dependencies:

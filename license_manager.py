@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-License Manager for Media Organizer.
-Handles license verification and activation.
+License Manager for Archimedius.
+Handles license verification, activation, and trial management.
 """
 
 import os
@@ -14,14 +14,15 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from pathlib import Path
 import webbrowser
+import time
 
 import defaults
 
 # Configure logging
-logger = logging.getLogger("MediaOrganizer")
+logger = logging.getLogger("Archimedius")
 
 class LicenseManager:
-    """Manages license verification and activation for Media Organizer."""
+    """Manages license verification and activation for Archimedius."""
     
     def __init__(self):
         """Initialize the license manager."""
@@ -87,7 +88,7 @@ class LicenseManager:
         
         try:
             # Check if license is for this product
-            if self.license_data.get("product") != "Media Organizer":
+            if self.license_data.get("product") != "Archimedius":
                 logger.warning("Invalid license: wrong product")
                 self.is_licensed = False
                 self._check_trial_eligibility()
@@ -194,6 +195,21 @@ class LicenseManager:
         """Show the license activation dialog."""
         ActivationDialog(parent, self)
 
+    def _verify_license_data(self):
+        """Verify the license data is valid."""
+        # Check if required fields are present
+        required_fields = ["key", "email", "name", "product", "expiration", "signature"]
+        if not all(field in self.license_data for field in required_fields):
+            logger.warning("License data missing required fields")
+            return False
+        
+        # Check if product name matches
+        if self.license_data.get("product") != "Archimedius":
+            logger.warning(f"Product name mismatch: {self.license_data.get('product')}")
+            return False
+        
+        return True
+
 
 class ActivationDialog:
     """Dialog for activating the software license."""
@@ -209,7 +225,7 @@ class ActivationDialog:
         
         # Create a new top-level window
         self.window = tk.Toplevel(parent)
-        self.window.title("Activate Media Organizer")
+        self.window.title("Activate Archimedius")
         self.window.geometry("500x400")
         self.window.minsize(500, 400)
         self.window.transient(parent)  # Make it a modal dialog
@@ -230,7 +246,7 @@ class ActivationDialog:
         # Title
         title_label = ttk.Label(
             content_frame, 
-            text="Activate Media Organizer", 
+            text="Activate Archimedius", 
             font=("TkDefaultFont", 16, "bold")
         )
         title_label.pack(pady=(0, 20))
@@ -294,17 +310,16 @@ class ActivationDialog:
         )
         close_button.pack(side=tk.RIGHT)
         
-        # Information text
-        info_text = (
-            "To activate Media Organizer, enter your license key and the email address "
-            "used for purchase. If you don't have a license key yet, click 'Purchase License' "
-            "to visit our website.\n\n"
-            "Each license allows installation on up to two computers owned by the same purchaser."
+        # Instructions
+        instructions_text = (
+            "To activate Archimedius, enter your license key and the email address "
+            "associated with your purchase. If you don't have a license key yet, "
+            "you can start a free trial or purchase a license."
         )
         
         info_label = ttk.Label(
             content_frame, 
-            text=info_text,
+            text=instructions_text,
             wraplength=460,
             justify=tk.LEFT
         )
@@ -338,7 +353,7 @@ class ActivationDialog:
             # Create a license data structure
             import datetime
             license_data = {
-                "product": "Media Organizer",
+                "product": "Archimedius",
                 "license_key": license_key,
                 "email": email,
                 "license_type": "Standard",
@@ -353,12 +368,7 @@ class ActivationDialog:
                 self.license_manager.is_licensed = True
                 self.license_manager.trial_mode = False
                 
-                messagebox.showinfo(
-                    "Activation Successful",
-                    "Thank you! Media Organizer has been successfully activated."
-                )
-                
-                self.window.destroy()
+                self._show_activation_success()
             else:
                 messagebox.showerror(
                     "Activation Error",
@@ -373,4 +383,29 @@ class ActivationDialog:
     
     def _open_purchase_page(self):
         """Open the purchase page in a web browser."""
+        webbrowser.open(defaults.APP_WEBSITE + "/purchase")
+    
+    def _generate_trial_license(self):
+        """Generate a trial license."""
+        # Create a trial license valid for 30 days
+        now = int(time.time())
+        expiration = now + (30 * 24 * 60 * 60)  # 30 days in seconds
+        
+        trial_data = {
+            "key": f"TRIAL-{uuid.uuid4()}",
+            "email": "trial@user.com",
+            "name": "Trial User",
+            "product": "Archimedius",
+            "purchase_date": now,
+            "expiration": expiration,
+            "type": "trial"
+        }
+        
+        # Save the trial data
+        trial_file = Path.home() / defaults.DEFAULT_PATHS.get("trial_file", "media_organizer_trial.json")
+        with open(trial_file, "w") as f:
+            json.dump(trial_data, f)
+        
+        self.license_manager.trial_mode = True
+        self.license_manager.trial_days_left = 30
         webbrowser.open(defaults.APP_WEBSITE + "/purchase") 

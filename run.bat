@@ -1,5 +1,5 @@
 @echo off
-echo Running Media Organizer...
+echo Running Archimedius...
 
 :: Check if Python is installed
 python --version >nul 2>&1
@@ -10,14 +10,14 @@ if %errorlevel% neq 0 (
 )
 
 :: Check if virtual environment exists, create if not
-if not exist media_organizer_venv (
+if not exist archimedius_venv (
     echo Creating virtual environment...
-    python -m venv media_organizer_venv
+    python -m venv archimedius_venv
 )
 
 :: Activate virtual environment and install dependencies
 echo Activating virtual environment and installing dependencies...
-call media_organizer_venv\Scripts\activate.bat
+call archimedius_venv\Scripts\activate.bat
 pip install -r requirements.txt
 
 :: Check if Tkinter is installed

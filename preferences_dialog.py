@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Preferences Dialog module for Media Organizer application.
-Provides a dialog for managing application preferences.
+Preferences Dialog module for Archimedius application.
+Provides a dialog for configuring application settings.
 """
 
 import tkinter as tk

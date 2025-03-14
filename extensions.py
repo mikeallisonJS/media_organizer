@@ -1,7 +1,7 @@
 """
-Extensions module for Media Organizer.
+Extensions module for Archimedius.
 
-This module defines the default supported file extensions for different media types.
+This module defines the supported file extensions for each media type.
 """
 
 # Default supported file extensions

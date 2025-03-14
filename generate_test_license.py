@@ -18,7 +18,7 @@ def generate_test_license():
     
     # Create license data
     license_data = {
-        "product": "Media Organizer",
+        "product": "Archimedius",
         "license_key": license_key,
         "email": "test@example.com",
         "license_type": "Professional",

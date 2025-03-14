@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Media File module for Media Organizer application.
+Media File module for Archimedius application.
 Provides a class for handling media files and extracting metadata.
 """
 

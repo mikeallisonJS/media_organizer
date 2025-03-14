@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-MediaOrganizerGUI - GUI module for the Media Organizer application.
+ArchimediusGUI - GUI module for the Archimedius application.
 Provides the main application window and user interface components.
 """
 
@@ -19,19 +19,19 @@ import defaults
 from log_window import LogWindow
 from preferences_dialog import PreferencesDialog
 from media_file import MediaFile
-from media_organizer import MediaOrganizer
+from archimedius import Archimedius
 from about_dialog import AboutDialog
 from help_dialog import HelpDialog
 from license_manager import LicenseManager
 
 # Configure logging
-logger = logging.getLogger("MediaOrganizer")
+logger = logging.getLogger("Archimedius")
 
 # Initialize SUPPORTED_EXTENSIONS from the defaults module
 SUPPORTED_EXTENSIONS = defaults.get_default_extensions()
 
-class MediaOrganizerGUI:
-    """GUI for the Media Organizer application."""
+class ArchimediusGUI:
+    """GUI for the Archimedius application."""
     
     def __init__(self, root):
         """Initialize the GUI."""
@@ -56,8 +56,8 @@ class MediaOrganizerGUI:
                 self.root.destroy()
                 return
         
-        # Create a media organizer instance
-        self.organizer = MediaOrganizer()
+        # Initialize the media organizer
+        self.organizer = Archimedius()
         
         # Initialize settings
         self.show_full_paths = defaults.DEFAULT_SETTINGS["show_full_paths"]
@@ -91,7 +91,7 @@ class MediaOrganizerGUI:
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         
         # Log startup
-        logger.info("Media Organizer started")
+        logger.info("Archimedius started")
 
     def _create_menu(self):
         """Create the application menu."""

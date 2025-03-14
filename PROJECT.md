@@ -1,8 +1,8 @@
-# Media Organizer Project Documentation
+# Archimedius Project Documentation
 
 ## Project Overview
 
-Media Organizer is a cross-platform desktop application built with Python and Tkinter that helps users organize their media files (audio, video, images, and ebooks) based on metadata. The application extracts metadata from various file formats and organizes them into a structured directory hierarchy according to user-defined templates.
+Archimedius is a cross-platform desktop application built with Python and Tkinter that helps users organize their media files (audio, video, images, and ebooks) based on metadata. The application extracts metadata from various file formats and organizes them into a structured directory hierarchy according to user-defined templates.
 
 ## Architecture
 
@@ -101,7 +101,7 @@ The `MediaOrganizerGUI` class provides:
 
 The application stores user settings in a JSON file located at:
 
-- `~/media_organizer_settings.json`
+- `~/archimedius_settings.json`
 
 Settings include:
 

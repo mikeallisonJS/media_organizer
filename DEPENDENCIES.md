@@ -1,10 +1,10 @@
 # Dependencies
 
-This document lists all dependencies used by the Media Organizer application along with their respective licenses.
+This document lists all dependencies used by the Archimedius application along with their respective licenses.
 
 ## License Compatibility Notice
 
-Media Organizer is proprietary software licensed only to the original purchaser. When using third-party libraries, we ensure compliance with their license terms by selecting components with permissive licenses that allow inclusion in proprietary software.
+Archimedius is proprietary software licensed only to the original purchaser. When using third-party libraries, we ensure compliance with their license terms by selecting components with permissive licenses that allow inclusion in proprietary software.
 
 All dependencies used in this application are under permissive licenses (MIT, BSD, Apache) which generally allow inclusion in proprietary software with proper attribution.
 

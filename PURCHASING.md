@@ -1,10 +1,10 @@
-# Media Organizer - Purchasing Information
+# Archimedius - Purchasing Information
 
-Thank you for your interest in Media Organizer, a powerful tool for organizing your media files based on metadata.
+Thank you for your interest in Archimedius, a powerful tool for organizing your media files based on metadata.
 
 ## Licensing Model
 
-Media Organizer is proprietary software licensed only to the original purchaser. Each license allows installation on up to two personal computers owned by the same purchaser (e.g., a desktop and a laptop).
+Archimedius is proprietary software licensed only to the original purchaser. Each license allows installation on up to two personal computers owned by the same purchaser (e.g., a desktop and a laptop).
 
 ## Pricing
 
@@ -22,14 +22,14 @@ Media Organizer is proprietary software licensed only to the original purchaser.
 
 ## How to Purchase
 
-1. Visit our website at [https://www.mediaorganizer.com/purchase](https://www.mediaorganizer.com/purchase)
+1. Visit our website at [https://www.archimedius.com/purchase](https://www.archimedius.com/purchase)
 2. Select your preferred license type
 3. Complete the secure checkout process
 4. You will receive an email with download instructions and your license key
 
 ## License Activation
 
-After purchasing, you will receive a unique license key. To activate your copy of Media Organizer:
+After purchasing, you will receive a unique license key. To activate your copy of Archimedius:
 
 1. Launch the application
 2. Go to Help > Register Product
@@ -38,11 +38,11 @@ After purchasing, you will receive a unique license key. To activate your copy o
 
 ## Refund Policy
 
-We offer a 30-day money-back guarantee. If you're not satisfied with Media Organizer for any reason, contact our support team within 30 days of purchase for a full refund.
+We offer a 30-day money-back guarantee. If you're not satisfied with Archimedius for any reason, contact our support team within 30 days of purchase for a full refund.
 
 ## Volume Licensing
 
-For businesses or organizations requiring multiple licenses, please contact us at [licensing@mediaorganizer.com](mailto:licensing@mediaorganizer.com) for volume pricing information.
+For businesses or organizations requiring multiple licenses, please contact us at [licensing@archimedius.com](mailto:licensing@archimedius.com) for volume pricing information.
 
 ## Questions?
 
@@ -53,4 +53,4 @@ If you have any questions about purchasing or licensing, please contact us at:
 
 ---
 
-Thank you for supporting the development of Media Organizer!
+Thank you for supporting the development of Archimedius!
