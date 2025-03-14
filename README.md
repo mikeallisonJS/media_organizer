@@ -28,7 +28,16 @@ Archimedius relies on several Python libraries to function properly. For a compl
 
 ## Installation
 
+### Installers
+
+The easiest way to install Archimedius is to download the pre-built installers from the [Releases](https://github.com/yourusername/archimedius/releases) page:
+
+- **macOS**: Download the `.dmg` file, open it, and drag the Archimedius app to your Applications folder.
+- **Windows**: Download the `.exe` installer and follow the installation wizard.
+
 ### Prerequisites
+
+If you prefer to run from source:
 
 - Python 3.6+ (tested with Python 3.13)
 - Tkinter (usually comes with Python, but may need separate installation)

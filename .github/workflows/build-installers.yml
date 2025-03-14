@@ -1,0 +1,228 @@
+name: Build Installers
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install py2app
+
+      - name: Install MediaInfo
+        run: |
+          brew install mediainfo
+
+      - name: Build macOS app
+        run: |
+          # Create setup.py for py2app
+          cat > setup.py << 'EOF'
+          from setuptools import setup
+          import os
+          import sys
+
+          APP = ['main.py']
+          DATA_FILES = []
+          OPTIONS = {
+              'argv_emulation': True,
+              'packages': ['tkinter'],
+              'includes': ['PIL', 'tinytag', 'pymediainfo'],
+              'iconfile': 'resources/archimedius.icns',
+              'plist': {
+                  'CFBundleName': 'Archimedius',
+                  'CFBundleDisplayName': 'Archimedius',
+                  'CFBundleGetInfoString': 'Media file organizer',
+                  'CFBundleIdentifier': 'com.mikeallisonjs.archimedius',
+                  'CFBundleVersion': '0.1.0',
+                  'CFBundleShortVersionString': '0.1.0',
+                  'NSHumanReadableCopyright': '© 2025 Mike Allison'
+              }
+          }
+
+          setup(
+              app=APP,
+              data_files=DATA_FILES,
+              options={'py2app': OPTIONS},
+              setup_requires=['py2app'],
+              name='Archimedius',
+              version='0.1.0',
+              author='Mike Allison',
+              author_email='support@mikeallisonjs.com',
+              url='https://mikeallisonjs.com',
+              description='Media file organizer',
+          )
+          EOF
+
+      - name: Create resources directory and placeholder icon
+        run: |
+          mkdir -p resources
+          # Create a placeholder icon file (you should replace this with your actual icon)
+          touch resources/archimedius.icns
+
+      - name: Build macOS app bundle
+        run: |
+          python setup.py py2app
+
+      - name: Create DMG
+        run: |
+          # Install create-dmg
+          brew install create-dmg
+
+          # Create DMG
+          create-dmg \
+            --volname "Archimedius Installer" \
+            --volicon "resources/archimedius.icns" \
+            --window-pos 200 120 \
+            --window-size 800 400 \
+            --icon-size 100 \
+            --icon "Archimedius.app" 200 190 \
+            --hide-extension "Archimedius.app" \
+            --app-drop-link 600 185 \
+            "Archimedius-Installer.dmg" \
+            "dist/Archimedius.app"
+
+      - name: Upload macOS installer
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./Archimedius-Installer.dmg
+          asset_name: Archimedius-${{ github.event.release.tag_name }}-macOS.dmg
+          asset_content_type: application/octet-stream
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Download MediaInfo
+        run: |
+          Invoke-WebRequest -Uri "https://mediaarea.net/download/binary/mediainfo/23.11/MediaInfo_CLI_23.11_Windows_x64.zip" -OutFile "mediainfo.zip"
+          Expand-Archive -Path "mediainfo.zip" -DestinationPath "mediainfo"
+          Copy-Item -Path "mediainfo/MediaInfo.exe" -Destination .
+
+      - name: Create resources directory and placeholder icon
+        run: |
+          mkdir -p resources
+          # Create a placeholder icon file (you should replace this with your actual icon)
+          echo "Placeholder" > resources/archimedius.ico
+
+      - name: Build Windows executable
+        run: |
+          pyinstaller --name Archimedius --windowed --icon=resources/archimedius.ico --add-data "MediaInfo.exe;." main.py
+
+      - name: Install NSIS
+        run: |
+          choco install nsis -y
+
+      - name: Create NSIS installer script
+        run: |
+          @"
+          !include "MUI2.nsh"
+
+          ; Application information
+          Name "Archimedius"
+          OutFile "Archimedius-Setup.exe"
+          InstallDir "$PROGRAMFILES64\Archimedius"
+          InstallDirRegKey HKCU "Software\Archimedius" ""
+          RequestExecutionLevel admin
+
+          ; Interface settings
+          !define MUI_ABORTWARNING
+          !define MUI_ICON "resources\archimedius.ico"
+          !define MUI_UNICON "resources\archimedius.ico"
+
+          ; Pages
+          !insertmacro MUI_PAGE_WELCOME
+          !insertmacro MUI_PAGE_LICENSE "LICENSE"
+          !insertmacro MUI_PAGE_DIRECTORY
+          !insertmacro MUI_PAGE_INSTFILES
+          !insertmacro MUI_PAGE_FINISH
+
+          !insertmacro MUI_UNPAGE_CONFIRM
+          !insertmacro MUI_UNPAGE_INSTFILES
+
+          ; Languages
+          !insertmacro MUI_LANGUAGE "English"
+
+          ; Installer sections
+          Section "Archimedius" SecMain
+            SetOutPath "$INSTDIR"
+            
+            ; Copy all files from the dist directory
+            File /r "dist\Archimedius\*.*"
+            
+            ; Create shortcuts
+            CreateDirectory "$SMPROGRAMS\Archimedius"
+            CreateShortcut "$SMPROGRAMS\Archimedius\Archimedius.lnk" "$INSTDIR\Archimedius.exe"
+            CreateShortcut "$DESKTOP\Archimedius.lnk" "$INSTDIR\Archimedius.exe"
+            
+            ; Write uninstaller
+            WriteUninstaller "$INSTDIR\Uninstall.exe"
+            
+            ; Write registry keys for uninstall
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Archimedius" "DisplayName" "Archimedius"
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Archimedius" "UninstallString" "$\"$INSTDIR\Uninstall.exe$\""
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Archimedius" "QuietUninstallString" "$\"$INSTDIR\Uninstall.exe$\" /S"
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Archimedius" "DisplayIcon" "$\"$INSTDIR\Archimedius.exe$\""
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Archimedius" "Publisher" "Mike Allison"
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Archimedius" "DisplayVersion" "0.1.0"
+          SectionEnd
+
+          ; Uninstaller section
+          Section "Uninstall"
+            ; Remove installed files
+            RMDir /r "$INSTDIR"
+            
+            ; Remove shortcuts
+            Delete "$SMPROGRAMS\Archimedius\Archimedius.lnk"
+            RMDir "$SMPROGRAMS\Archimedius"
+            Delete "$DESKTOP\Archimedius.lnk"
+            
+            ; Remove registry keys
+            DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Archimedius"
+            DeleteRegKey HKCU "Software\Archimedius"
+          SectionEnd
+          "@ | Out-File -FilePath "installer.nsi" -Encoding utf8
+
+      - name: Build Windows installer
+        run: |
+          & 'C:\Program Files (x86)\NSIS\makensis.exe' installer.nsi
+
+      - name: Upload Windows installer
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./Archimedius-Setup.exe
+          asset_name: Archimedius-${{ github.event.release.tag_name }}-Windows.exe
+          asset_content_type: application/octet-stream
