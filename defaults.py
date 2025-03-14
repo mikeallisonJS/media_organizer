@@ -16,19 +16,6 @@ APP_AUTHOR = "Mike Allison"
 APP_WEBSITE = "https://mikeallisonjs.com"
 APP_EMAIL = "support@mikeallisonjs.com"
 
-# License information
-LICENSE_TYPES = {
-    "Standard": {
-        "price": 29.99,
-        "max_machines": 2,
-    },
-    "Professional": {
-        "price": 49.99,
-        "max_machines": 5,
-    }
-}
-TRIAL_PERIOD_DAYS = 30
-
 # Default templates for each media type
 DEFAULT_TEMPLATES = {
     "audio": "{creation_year}/{genre}/{filename}",
@@ -63,9 +50,6 @@ DEFAULT_WINDOW_SIZES = {
     "about_dialog": "500x450",
 }
 
-# Default operation mode
-DEFAULT_OPERATION_MODE = "copy"  # Options: "copy", "move", "simulate"
-
 # Default file paths
 DEFAULT_PATHS = {
     "settings_file": "media_organizer_settings.json",
@@ -74,22 +58,7 @@ DEFAULT_PATHS = {
     "trial_file": "media_organizer_trial.json",
 }
 
-# Function to get default template for a specific media type
-def get_default_template(media_type):
-    """Get the default template for a specific media type."""
-    return DEFAULT_TEMPLATES.get(media_type, DEFAULT_TEMPLATES["audio"])
-
 # Function to get all default extensions
 def get_default_extensions():
     """Get a copy of the default extensions dictionary."""
-    return extensions.DEFAULT_EXTENSIONS.copy()
-
-# Function to get default setting value
-def get_default_setting(setting_name):
-    """Get the default value for a specific setting."""
-    return DEFAULT_SETTINGS.get(setting_name, None)
-
-# Function to get default window size
-def get_default_window_size(window_name):
-    """Get the default size for a specific window."""
-    return DEFAULT_WINDOW_SIZES.get(window_name, "600x400") 
+    return extensions.DEFAULT_EXTENSIONS.copy() 

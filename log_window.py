@@ -63,7 +63,7 @@ class LogWindow:
         self._create_tooltip(clear_button, "Clear all log entries (this cannot be undone)")
         
         # Add keyboard shortcut (Ctrl+L) to clear logs
-        self.window.bind("<Control-l>", lambda event: self.clear_logs())
+        self.window.bind("<Control-l>", lambda _: self.clear_logs())
         
         # Configure logging to text widget
         self._setup_text_logging()
@@ -117,7 +117,7 @@ class LogWindow:
 
     def _create_tooltip(self, widget, text):
         """Create a tooltip for a widget."""
-        def enter(event):
+        def enter(_):
             x, y, _, _ = widget.bbox("insert")
             x += widget.winfo_rootx() + 25
             y += widget.winfo_rooty() + 25
@@ -132,7 +132,7 @@ class LogWindow:
                              wraplength=250)
             label.pack(padx=3, pady=3)
             
-        def leave(event):
+        def leave(_):
             if hasattr(self, "tooltip"):
                 self.tooltip.destroy()
                 

@@ -384,7 +384,7 @@ class MediaOrganizerGUI:
         # Audio template
         self.template_vars["audio"] = tk.StringVar(value=self.organizer.templates["audio"])
         self.template_vars["audio"].trace_add(
-            "write", lambda *args: self._on_template_change("audio")
+            "write", lambda *_: self._on_template_change("audio")
         )
         ttk.Label(audio_template_frame, text="Audio Template:").pack(anchor=tk.W)
         self.template_entries["audio"] = ttk.Entry(
@@ -398,7 +398,7 @@ class MediaOrganizerGUI:
         # Video template
         self.template_vars["video"] = tk.StringVar(value=self.organizer.templates["video"])
         self.template_vars["video"].trace_add(
-            "write", lambda *args: self._on_template_change("video")
+            "write", lambda *_: self._on_template_change("video")
         )
         ttk.Label(video_template_frame, text="Video Template:").pack(anchor=tk.W)
         self.template_entries["video"] = ttk.Entry(
@@ -412,7 +412,7 @@ class MediaOrganizerGUI:
         # Image template
         self.template_vars["image"] = tk.StringVar(value=self.organizer.templates["image"])
         self.template_vars["image"].trace_add(
-            "write", lambda *args: self._on_template_change("image")
+            "write", lambda *_: self._on_template_change("image")
         )
         ttk.Label(image_template_frame, text="Image Template:").pack(anchor=tk.W)
         self.template_entries["image"] = ttk.Entry(
@@ -427,7 +427,7 @@ class MediaOrganizerGUI:
         # eBook template
         self.template_vars["ebook"] = tk.StringVar(value=self.organizer.templates["ebook"])
         self.template_vars["ebook"].trace_add(
-            "write", lambda *args: self._on_template_change("ebook")
+            "write", lambda *_: self._on_template_change("ebook")
         )
         ttk.Label(ebook_template_frame, text="eBook Template:").pack(anchor=tk.W)
         self.template_entries["ebook"] = ttk.Entry(
@@ -441,7 +441,6 @@ class MediaOrganizerGUI:
 
         # For backward compatibility
         self.template_var = self.template_vars["audio"]
-        self.template_entry = self.template_entries["audio"]
 
         # Middle section - expandable preview
         middle_frame = ttk.Frame(self.main_frame)
@@ -789,12 +788,12 @@ class MediaOrganizerGUI:
                     selected_extensions.append(ext)
         return selected_extensions
 
-    def _on_template_change(self, *args, media_type=None):
+    def _on_template_change(self, *_, media_type=None):
         """
         Handle template change event.
 
         Args:
-            *args: Variable arguments passed by tkinter trace
+            *_: Variable arguments passed by tkinter trace (unused)
             media_type: The media type whose template changed ('audio', 'video', 'image', 'ebook')
         """
         # Auto-save settings after a short delay if enabled
@@ -963,7 +962,7 @@ class MediaOrganizerGUI:
 
     def _create_tooltip(self, widget, text):
         """Create a tooltip for a widget."""
-        def enter(event):
+        def enter(_):
             x, y, _, _ = widget.bbox("insert")
             x += widget.winfo_rootx() + 25
             y += widget.winfo_rooty() + 25
@@ -978,7 +977,7 @@ class MediaOrganizerGUI:
                              wraplength=250)
             label.pack(padx=3, pady=3)
             
-        def leave(event):
+        def leave(_):
             if hasattr(self, "tooltip"):
                 self.tooltip.destroy()
                 

@@ -8,3 +8,4 @@
 [x] Replace PyPDF2 with PyPDF for better PDF support
 [] Allow selection of files in preview table
 [] Add exclude unknown option to preview table
+[x] Clean up unused code identified by Vulture (see unused_code_report.md)

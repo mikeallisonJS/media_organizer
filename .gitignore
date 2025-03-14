@@ -34,3 +34,7 @@ ENV/
 # System files
 .DS_Store
 Thumbs.db
+
+# Unused code report
+unused_code_report.md
+unused_code_report.json
