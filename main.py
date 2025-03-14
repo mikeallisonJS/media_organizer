@@ -20,6 +20,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger("MediaOrganizer")
 
+# Set PyPDF logger to ERROR level to suppress warnings
+logging.getLogger("pypdf").setLevel(logging.ERROR)
+
 def main():
     """Main entry point for the application."""
     # Try to load logging level from settings file
@@ -35,6 +38,9 @@ def main():
                 for handler in logging.root.handlers:
                     if isinstance(handler, logging.FileHandler):
                         handler.setLevel(numeric_level)
+                
+                # Keep PyPDF logger at ERROR level regardless of user settings
+                logging.getLogger("pypdf").setLevel(logging.ERROR)
         except Exception as e:
             logger.error(f"Error loading logging level from settings: {e}")
     
