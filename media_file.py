@@ -364,12 +364,13 @@ class MediaFile:
         except Exception as e:
             logger.error(f"Error in ebook metadata extraction for {self.file_path}: {e}")
             
-    def get_formatted_path(self, template):
+    def get_formatted_path(self, template, exclude_unknown=False):
         """
         Format the destination path using the template and metadata.
         
         Args:
             template: String template with placeholders for metadata fields
+            exclude_unknown: If True, removes "Unknown" folders from the path
             
         Returns:
             Formatted path string
@@ -393,6 +394,18 @@ class MediaFile:
             
             # Replace any remaining placeholders with "Unknown"
             formatted_path = re.sub(r'{[^{}]+}', 'Unknown', formatted_path)
+            
+            # If exclude_unknown is True, remove "Unknown" folders from the path
+            if exclude_unknown:
+                # Split the path into components
+                path_parts = formatted_path.split(os.sep)
+                # Filter out "Unknown" parts
+                path_parts = [part for part in path_parts if part != "Unknown"]
+                # Rejoin the path
+                formatted_path = os.sep.join(path_parts)
+                # If the path is now empty, use the file_type as a fallback
+                if not formatted_path:
+                    formatted_path = self.file_type
             
             # Ensure the path ends with the original filename if not already included
             if "{filename}" not in template and "{filename}.{extension}" not in template:

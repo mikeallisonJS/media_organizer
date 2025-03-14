@@ -380,6 +380,12 @@ class MediaOrganizerGUI:
         # Create template variables and entries for each media type
         self.template_vars = {}
         self.template_entries = {}
+        # Variables for exclude unknown options
+        self.exclude_unknown_vars = {}
+
+        # Initialize exclude unknown variables with default values from defaults.py
+        for media_type in ["audio", "video", "image", "ebook"]:
+            self.exclude_unknown_vars[media_type] = tk.BooleanVar(value=defaults.DEFAULT_EXCLUDE_UNKNOWN[media_type])
 
         # Audio template
         self.template_vars["audio"] = tk.StringVar(value=self.organizer.templates["audio"])
@@ -394,6 +400,15 @@ class MediaOrganizerGUI:
         ttk.Label(
             audio_template_frame, text="Example: {file_type}/{artist}/{album}/{filename}"
         ).pack(anchor=tk.W)
+        # Add exclude unknown checkbox
+        self.exclude_unknown_vars["audio"].trace_add(
+            "write", lambda *_: self._on_template_change("audio")
+        )
+        ttk.Checkbutton(
+            audio_template_frame, 
+            text="Exclude 'Unknown' folders from path", 
+            variable=self.exclude_unknown_vars["audio"]
+        ).pack(anchor=tk.W, pady=(5, 0))
 
         # Video template
         self.template_vars["video"] = tk.StringVar(value=self.organizer.templates["video"])
@@ -408,6 +423,15 @@ class MediaOrganizerGUI:
         ttk.Label(video_template_frame, text="Example: {file_type}/{year}/{filename}").pack(
             anchor=tk.W
         )
+        # Add exclude unknown checkbox
+        self.exclude_unknown_vars["video"].trace_add(
+            "write", lambda *_: self._on_template_change("video")
+        )
+        ttk.Checkbutton(
+            video_template_frame, 
+            text="Exclude 'Unknown' folders from path", 
+            variable=self.exclude_unknown_vars["video"]
+        ).pack(anchor=tk.W, pady=(5, 0))
 
         # Image template
         self.template_vars["image"] = tk.StringVar(value=self.organizer.templates["image"])
@@ -423,6 +447,15 @@ class MediaOrganizerGUI:
             image_template_frame,
             text="Example: {file_type}/{creation_year}/{creation_month_name}/{filename}",
         ).pack(anchor=tk.W)
+        # Add exclude unknown checkbox
+        self.exclude_unknown_vars["image"].trace_add(
+            "write", lambda *_: self._on_template_change("image")
+        )
+        ttk.Checkbutton(
+            image_template_frame, 
+            text="Exclude 'Unknown' folders from path", 
+            variable=self.exclude_unknown_vars["image"]
+        ).pack(anchor=tk.W, pady=(5, 0))
 
         # eBook template
         self.template_vars["ebook"] = tk.StringVar(value=self.organizer.templates["ebook"])
@@ -438,6 +471,15 @@ class MediaOrganizerGUI:
             ebook_template_frame,
             text="Example: {file_type}/{author}/{title}/{filename}",
         ).pack(anchor=tk.W)
+        # Add exclude unknown checkbox
+        self.exclude_unknown_vars["ebook"].trace_add(
+            "write", lambda *_: self._on_template_change("ebook")
+        )
+        ttk.Checkbutton(
+            ebook_template_frame, 
+            text="Exclude 'Unknown' folders from path", 
+            variable=self.exclude_unknown_vars["ebook"]
+        ).pack(anchor=tk.W, pady=(5, 0))
 
         # For backward compatibility
         self.template_var = self.template_vars["audio"]
@@ -680,8 +722,11 @@ class MediaOrganizerGUI:
                     # Get the appropriate template for this file type
                     template = self.organizer.get_template(media_file.file_type)
                     
+                    # Get exclude_unknown setting for this file type
+                    exclude_unknown = self.exclude_unknown_vars.get(media_file.file_type, tk.BooleanVar(value=False)).get()
+                    
                     # Generate destination path
-                    rel_path = media_file.get_formatted_path(template)
+                    rel_path = media_file.get_formatted_path(template, exclude_unknown=exclude_unknown)
                     
                     # Get source path for display
                     if getattr(self, "show_full_paths", False):
@@ -1143,8 +1188,11 @@ class MediaOrganizerGUI:
                         # Get the appropriate template for this file type
                         template = self.organizer.get_template(media_file.file_type)
                         
+                        # Get exclude_unknown setting for this file type
+                        exclude_unknown = self.exclude_unknown_vars.get(media_file.file_type, tk.BooleanVar(value=False)).get()
+                        
                         # Generate destination path
-                        rel_path = media_file.get_formatted_path(template)
+                        rel_path = media_file.get_formatted_path(template, exclude_unknown=exclude_unknown)
                         dest_path = output_path / rel_path
                         
                         # Create destination directory if it doesn't exist
@@ -1215,6 +1263,13 @@ class MediaOrganizerGUI:
                     "video": {ext: var.get() for ext, var in self.extension_vars["video"].items()},
                     "image": {ext: var.get() for ext, var in self.extension_vars["image"].items()},
                     "ebook": {ext: var.get() for ext, var in self.extension_vars["ebook"].items()},
+                },
+                # Save exclude unknown settings
+                "exclude_unknown": {
+                    "audio": self.exclude_unknown_vars["audio"].get(),
+                    "video": self.exclude_unknown_vars["video"].get(),
+                    "image": self.exclude_unknown_vars["image"].get(),
+                    "ebook": self.exclude_unknown_vars["ebook"].get(),
                 },
                 # Save custom extensions
                 "custom_extensions": SUPPORTED_EXTENSIONS,
@@ -1291,6 +1346,19 @@ class MediaOrganizerGUI:
 
                 # Load auto-preview setting (defaults to True)
                 self.auto_preview_enabled = settings.get("auto_preview_enabled", True)
+
+                # Load exclude unknown settings
+                if "exclude_unknown" in settings:
+                    for media_type in ["audio", "video", "image", "ebook"]:
+                        if media_type in settings["exclude_unknown"]:
+                            self.exclude_unknown_vars[media_type].set(settings["exclude_unknown"][media_type])
+                        else:
+                            # Use default for this media type if not in settings
+                            self.exclude_unknown_vars[media_type].set(defaults.DEFAULT_EXCLUDE_UNKNOWN[media_type])
+                else:
+                    # Use defaults for all media types if exclude_unknown not in settings
+                    for media_type in ["audio", "video", "image", "ebook"]:
+                        self.exclude_unknown_vars[media_type].set(defaults.DEFAULT_EXCLUDE_UNKNOWN[media_type])
 
                 # Load logging level setting
                 self.logging_level = settings.get("logging_level", defaults.DEFAULT_SETTINGS["logging_level"])

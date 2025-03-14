@@ -24,12 +24,24 @@ DEFAULT_TEMPLATES = {
     "ebook": "{author}/{title}/{filename}",
 }
 
+# Default setting for excluding "Unknown" folders from paths
+EXCLUDE_UNKNOWN_DEFAULT = True
+
+# Default exclude unknown settings for each media type
+DEFAULT_EXCLUDE_UNKNOWN = {
+    "audio": EXCLUDE_UNKNOWN_DEFAULT,
+    "video": EXCLUDE_UNKNOWN_DEFAULT,
+    "image": EXCLUDE_UNKNOWN_DEFAULT,
+    "ebook": EXCLUDE_UNKNOWN_DEFAULT,
+}
+
 # Default settings
 DEFAULT_SETTINGS = {
     "show_full_paths": False,
     "auto_save_enabled": True,
     "auto_preview_enabled": True,
     "logging_level": "INFO",
+    "exclude_unknown": DEFAULT_EXCLUDE_UNKNOWN,
 }
 
 # Logging levels with user-friendly names
