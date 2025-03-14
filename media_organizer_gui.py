@@ -643,7 +643,9 @@ class MediaOrganizerGUI:
             
             if current_file == "Complete":
                 self.file_var.set("Organization complete!")
-                self._organization_complete()
+                # Only call _organization_complete for the main organization process, not for selected files
+                if not hasattr(self, 'processing_selected_files') or not self.processing_selected_files:
+                    self._organization_complete()
             else:
                 # Truncate long paths for display
                 if len(current_file) > 70:
@@ -1589,6 +1591,9 @@ class MediaOrganizerGUI:
         self.organizer.set_output_dir(output_dir)
         self.organizer.set_operation_mode(mode)
         
+        # Set flag to indicate we're processing selected files
+        self.processing_selected_files = True
+        
         # Start processing in a separate thread
         threading.Thread(
             target=self._process_selected_files_thread,
@@ -1608,6 +1613,7 @@ class MediaOrganizerGUI:
             # Process each selected file
             total_files = len(selected_files)
             processed = 0
+            successful = 0  # Track successfully processed files
             
             for source_path, dest_rel in selected_files:
                 if self.organizer.stop_requested:
@@ -1617,6 +1623,12 @@ class MediaOrganizerGUI:
                 try:
                     # Convert paths
                     source_file = Path(source_path)
+                    
+                    # Skip if the source file doesn't exist
+                    if not source_file.exists():
+                        logger.warning(f"Skipping file {source_file} as it no longer exists")
+                        processed += 1
+                        continue
                     
                     # For destination, check if it's a relative or absolute path
                     if os.path.isabs(dest_rel):
@@ -1634,6 +1646,9 @@ class MediaOrganizerGUI:
                     else:  # move mode
                         shutil.move(source_file, dest_file)
                         logger.info(f"Moved {source_file} to {dest_file}")
+                    
+                    # Increment successful count
+                    successful += 1
                         
                 except Exception as e:
                     logger.error(f"Error processing file {source_path}: {e}")
@@ -1643,13 +1658,23 @@ class MediaOrganizerGUI:
                 self.root.after(0, lambda p=processed, t=total_files, f=source_path: 
                                self._update_progress(p, t, f))
                 
+            # Update the organizer's files_processed attribute
+            self.organizer.files_processed = successful
+            
             # Complete
             self.root.after(0, lambda: self._update_progress(processed, total_files, "Complete"))
             operation_name = "copy" if mode == "copy" else "move"
-            logger.info(f"{operation_name.capitalize()} operation complete. Processed {processed} files.")
+            logger.info(f"{operation_name.capitalize()} operation complete. Processed {successful} files successfully out of {processed} attempted.")
+            
+            # Show custom completion message
+            operation_past = "copied" if mode == "copy" else "moved"
+            self.root.after(0, lambda: messagebox.showinfo(
+                "Complete",
+                f"Operation complete!\n\n{operation_past.capitalize()} {successful} files successfully."
+            ))
             
             # Refresh the preview if files were moved to show current state
-            if mode == "move" and processed > 0:
+            if mode == "move" and successful > 0:
                 self.root.after(500, self._generate_preview)
             
         except Exception as e:
@@ -1675,6 +1700,8 @@ class MediaOrganizerGUI:
             self.copy_button.config(state=tk.NORMAL)
             self.move_button.config(state=tk.NORMAL)
             self.stop_button.config(state=tk.DISABLED)
+            # Reset the processing_selected_files flag
+            self.processing_selected_files = False
 
     # Copy all methods from the original MediaOrganizerGUI class
     # ... existing code ... 
