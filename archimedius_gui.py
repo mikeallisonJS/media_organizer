@@ -1419,14 +1419,21 @@ class ArchimediusGUI:
                             custom_extensions[media_type] = exts
                     # Update global extensions
                     SUPPORTED_EXTENSIONS = custom_extensions
+                    # Refresh the extension filters to show the updated extensions
+                    self._refresh_extension_filters()
                 
-                # Apply extension selections
+                # Apply extension selections after refreshing filters
                 if "extensions" in settings:
                     for file_type in ["audio", "video", "image", "ebook"]:
-                        if file_type in settings:
-                            for ext, value in settings[file_type].items():
+                        if file_type in settings["extensions"]:
+                            # First update individual extensions
+                            for ext, value in settings["extensions"][file_type].items():
                                 if ext in self.extension_vars[file_type]:
                                     self.extension_vars[file_type][ext].set(value)
+                            
+                            # Then update the "All" checkbox based on individual selections
+                            all_selected = all(var.get() for var in self.extension_vars[file_type].values())
+                            getattr(self, f"{file_type}_all_var").set(all_selected)
                 
                 # Load full paths setting
                 self.show_full_paths = settings.get("show_full_paths", False)
@@ -1452,9 +1459,6 @@ class ArchimediusGUI:
 
                 # Load logging level setting
                 self.logging_level = settings.get("logging_level", defaults.DEFAULT_SETTINGS["logging_level"])
-
-                # Update "All" checkboxes
-                self._update_extension_selection()
                 
                 logger.info(f"Settings loaded from {self.config_file}")
                 
@@ -1815,6 +1819,13 @@ class ArchimediusGUI:
 
     def _refresh_extension_filters(self):
         """Refresh the extension filter checkboxes based on current SUPPORTED_EXTENSIONS."""
+        # Store current selections before clearing frames
+        current_selections = {}
+        current_all_selections = {}
+        for file_type in ["audio", "video", "image", "ebook"]:
+            current_selections[file_type] = {ext: var.get() for ext, var in self.extension_vars[file_type].items()}
+            current_all_selections[file_type] = getattr(self, f"{file_type}_all_var").get()
+
         # Clear existing extension frames
         for frame in self.file_types_frame.winfo_children():
             frame.destroy()
@@ -1829,7 +1840,9 @@ class ArchimediusGUI:
             type_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
             
             # Create "Select All" checkbox
-            all_var = tk.BooleanVar(value=True)
+            # If parent was selected, keep new extensions selected
+            all_selected = current_all_selections.get(file_type, True)
+            all_var = tk.BooleanVar(value=all_selected)
             setattr(self, f"{file_type}_all_var", all_var)
             all_cb = ttk.Checkbutton(
                 type_frame,
@@ -1849,7 +1862,9 @@ class ArchimediusGUI:
             # Create checkboxes for each extension
             for i, ext in enumerate(SUPPORTED_EXTENSIONS[file_type]):
                 ext_name = ext.lstrip(".")
-                var = tk.BooleanVar(value=True)
+                # If parent was selected or extension existed and was selected, keep it selected
+                selected = all_selected or current_selections.get(file_type, {}).get(ext, True)
+                var = tk.BooleanVar(value=selected)
                 self.extension_vars[file_type][ext] = var
                 cb = ttk.Checkbutton(
                     extensions_frame,
