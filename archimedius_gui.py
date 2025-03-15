@@ -193,23 +193,23 @@ class ArchimediusGUI:
         directories_frame.pack(fill=tk.X, pady=2)
 
         # Source directory selection
-        source_frame = ttk.LabelFrame(directories_frame, text="Source Directory", padding=5)
-        source_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
+        self.source_frame = ttk.LabelFrame(directories_frame, text="Source Directory", padding=5)
+        self.source_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
         
-        self.source_entry = ttk.Entry(source_frame)
+        self.source_entry = ttk.Entry(self.source_frame)
         self.source_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
         
-        source_button = ttk.Button(source_frame, text="Browse...", command=self._browse_source)
+        source_button = ttk.Button(self.source_frame, text="Browse...", command=self._browse_source)
         source_button.pack(side=tk.RIGHT)
 
         # Output directory selection
-        output_frame = ttk.LabelFrame(directories_frame, text="Output Directory", padding=5)
-        output_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(5, 0))
+        self.output_frame = ttk.LabelFrame(directories_frame, text="Output Directory", padding=5)
+        self.output_frame.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(5, 0))
 
-        self.output_entry = ttk.Entry(output_frame)
+        self.output_entry = ttk.Entry(self.output_frame)
         self.output_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
 
-        output_button = ttk.Button(output_frame, text="Browse...", command=self._browse_output)
+        output_button = ttk.Button(self.output_frame, text="Browse...", command=self._browse_output)
         output_button.pack(side=tk.RIGHT)
         
         # Extension filters
@@ -495,40 +495,40 @@ class ArchimediusGUI:
         preview_frame.pack(fill=tk.BOTH, expand=True, pady=2)
 
         # Add a button frame at the top of the preview
-        preview_button_frame = ttk.Frame(preview_frame)
-        preview_button_frame.pack(fill=tk.X, pady=(0, 5))
+        self.preview_button_frame = ttk.Frame(preview_frame)
+        self.preview_button_frame.pack(fill=tk.X, pady=(0, 5))
         
         # Add Analyze button
         analyze_button = ttk.Button(
-            preview_button_frame, text="Analyze", command=self._generate_preview
+            self.preview_button_frame, text="Analyze", command=self._generate_preview
         )
         analyze_button.pack(side=tk.LEFT, padx=5)
         self._create_tooltip(analyze_button, "Refresh the preview based on current settings")
         
         # Add Copy Selected button
         copy_selected_button = ttk.Button(
-            preview_button_frame, text="Copy Selected", command=lambda: self._process_selected_files("copy")
+            self.preview_button_frame, text="Copy Selected", command=lambda: self._process_selected_files("copy")
         )
         copy_selected_button.pack(side=tk.LEFT, padx=5)
         self._create_tooltip(copy_selected_button, "Copy only the selected files to the destination")
         
         # Add Move Selected button
         move_selected_button = ttk.Button(
-            preview_button_frame, text="Move Selected", command=lambda: self._process_selected_files("move")
+            self.preview_button_frame, text="Move Selected", command=lambda: self._process_selected_files("move")
         )
         move_selected_button.pack(side=tk.LEFT, padx=5)
         self._create_tooltip(move_selected_button, "Move only the selected files to the destination")
         
         # Add Select All button
         select_all_button = ttk.Button(
-            preview_button_frame, text="Select All", command=self._select_all_files
+            self.preview_button_frame, text="Select All", command=self._select_all_files
         )
         select_all_button.pack(side=tk.LEFT, padx=5)
         self._create_tooltip(select_all_button, "Select all files in the preview")
         
         # Add Deselect All button
         deselect_all_button = ttk.Button(
-            preview_button_frame, text="Deselect All", command=self._deselect_all_files
+            self.preview_button_frame, text="Deselect All", command=self._deselect_all_files
         )
         deselect_all_button.pack(side=tk.LEFT, padx=5)
         self._create_tooltip(deselect_all_button, "Deselect all files in the preview")
@@ -1694,18 +1694,91 @@ class ArchimediusGUI:
     def _update_ui_for_processing(self, is_processing):
         """Update the UI elements for processing state."""
         if is_processing:
-            # Disable buttons during processing
+            # Disable all interactive elements during processing
+            # Disable main action buttons
             self.copy_button.config(state=tk.DISABLED)
             self.move_button.config(state=tk.DISABLED)
+            # Enable stop button
             self.stop_button.config(state=tk.NORMAL)
+            
+            # Disable directory selection
+            self.source_entry.config(state=tk.DISABLED)
+            self.output_entry.config(state=tk.DISABLED)
+            for button in self.source_frame.winfo_children():
+                if isinstance(button, ttk.Button):
+                    button.config(state=tk.DISABLED)
+            for button in self.output_frame.winfo_children():
+                if isinstance(button, ttk.Button):
+                    button.config(state=tk.DISABLED)
+            
+            # Disable extension filters
+            for frame in self.file_types_frame.winfo_children():
+                for widget in frame.winfo_children():
+                    if isinstance(widget, (ttk.Checkbutton, ttk.Frame)):
+                        if isinstance(widget, ttk.Frame):
+                            for cb in widget.winfo_children():
+                                if isinstance(cb, ttk.Checkbutton):
+                                    cb.config(state=tk.DISABLED)
+                        else:
+                            widget.config(state=tk.DISABLED)
+            
+            # Disable template entries and exclude unknown checkboxes
+            for media_type in ["audio", "video", "image", "ebook"]:
+                self.template_entries[media_type].config(state=tk.DISABLED)
+                
+            # Disable preview controls
+            for widget in self.preview_button_frame.winfo_children():
+                if isinstance(widget, ttk.Button):
+                    widget.config(state=tk.DISABLED)
+            
+            # Disable preview tree
+            self.preview_tree.config(selectmode="none")
+            
+            # Reset progress indicators
             self.progress_var.set(0)
-            self.status_var.set("Processing selected files...")
+            self.status_var.set("Processing files...")
             self.file_var.set("")
         else:
-            # Re-enable buttons after processing
+            # Re-enable all interactive elements after processing
+            # Enable main action buttons
             self.copy_button.config(state=tk.NORMAL)
             self.move_button.config(state=tk.NORMAL)
+            # Disable stop button
             self.stop_button.config(state=tk.DISABLED)
+            
+            # Enable directory selection
+            self.source_entry.config(state=tk.NORMAL)
+            self.output_entry.config(state=tk.NORMAL)
+            for button in self.source_frame.winfo_children():
+                if isinstance(button, ttk.Button):
+                    button.config(state=tk.NORMAL)
+            for button in self.output_frame.winfo_children():
+                if isinstance(button, ttk.Button):
+                    button.config(state=tk.NORMAL)
+            
+            # Enable extension filters
+            for frame in self.file_types_frame.winfo_children():
+                for widget in frame.winfo_children():
+                    if isinstance(widget, (ttk.Checkbutton, ttk.Frame)):
+                        if isinstance(widget, ttk.Frame):
+                            for cb in widget.winfo_children():
+                                if isinstance(cb, ttk.Checkbutton):
+                                    cb.config(state=tk.NORMAL)
+                        else:
+                            widget.config(state=tk.NORMAL)
+            
+            # Enable template entries and exclude unknown checkboxes
+            for media_type in ["audio", "video", "image", "ebook"]:
+                self.template_entries[media_type].config(state=tk.NORMAL)
+                
+            # Enable preview controls
+            for widget in self.preview_button_frame.winfo_children():
+                if isinstance(widget, ttk.Button):
+                    widget.config(state=tk.NORMAL)
+            
+            # Enable preview tree
+            self.preview_tree.config(selectmode="extended")
+            
             # Reset the processing_selected_files flag
             self.processing_selected_files = False
 
