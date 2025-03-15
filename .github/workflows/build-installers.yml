@@ -49,7 +49,12 @@ jobs:
                   'CFBundleIdentifier': 'com.mikeallisonjs.archimedius',
                   'CFBundleVersion': '0.1.0',
                   'CFBundleShortVersionString': '0.1.0',
-                  'NSHumanReadableCopyright': '© 2025 Mike Allison'
+                  'NSHumanReadableCopyright': '© 2025 Mike Allison',
+                  'LSUIElement': False,  # Show in Dock
+                  'LSBackgroundOnly': False,  # Not a background-only app
+                  'CFBundleDocumentTypes': [],  # No document types
+                  'NSHighResolutionCapable': True,  # Enable Retina display support
+                  'NSRequiresAquaSystemAppearance': False  # Support Dark Mode
               }
           }
 
