@@ -67,12 +67,6 @@ jobs:
           )
           EOF
 
-      - name: Create resources directory and placeholder icon
-        run: |
-          mkdir -p resources
-          # Create a placeholder icon file (you should replace this with your actual icon)
-          touch resources/archimedius.icns
-
       - name: Build macOS app bundle
         run: |
           python setup.py py2app
@@ -128,12 +122,6 @@ jobs:
           Invoke-WebRequest -Uri "https://mediaarea.net/download/binary/mediainfo/23.11/MediaInfo_CLI_23.11_Windows_x64.zip" -OutFile "mediainfo.zip"
           Expand-Archive -Path "mediainfo.zip" -DestinationPath "mediainfo"
           Copy-Item -Path "mediainfo/MediaInfo.exe" -Destination .
-
-      - name: Create resources directory and placeholder icon
-        run: |
-          mkdir -p resources
-          # Create a placeholder icon file (you should replace this with your actual icon)
-          echo "Placeholder" > resources/archimedius.ico
 
       - name: Build Windows executable
         run: |

@@ -18,8 +18,9 @@ For the workflow to function properly:
 
 1. **Icons**:
 
-   - Place your macOS icon file at `resources/archimedius.icns`
-   - Place your Windows icon file at `resources/archimedius.ico`
+   - macOS icon: `resources/archimedius.icns`
+   - Windows icon: `resources/archimedius.ico`
+     Both icons are already included in the repository.
 
 2. **LICENSE file**:
 
@@ -46,6 +47,7 @@ To customize the installers:
 
 - **macOS**: Edit the `setup.py` section in the workflow file to change app metadata
 - **Windows**: Edit the NSIS script section to customize the installer behavior
+- **Icons**: Replace the icon files in the `resources` directory with your own versions if you want to change them
 
 ### Troubleshooting
 
