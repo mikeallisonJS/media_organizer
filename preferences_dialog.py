@@ -206,7 +206,8 @@ class PreferencesDialog:
         
         # Store the result
         self.result = {
-            'extensions': new_extensions
+            'extensions': new_extensions,
+            'refresh_extensions': True  # Flag to indicate extension filters should be refreshed
         }
         
         # Call the callback function if provided

@@ -217,11 +217,11 @@ class ArchimediusGUI:
         extensions_frame.pack(fill=tk.X, pady=2)
         
         # Create a frame for each file type category
-        file_types_frame = ttk.Frame(extensions_frame)
-        file_types_frame.pack(fill=tk.X, pady=2)
+        self.file_types_frame = ttk.Frame(extensions_frame)
+        self.file_types_frame.pack(fill=tk.X, pady=2)
         
         # Audio extensions
-        audio_frame = ttk.LabelFrame(file_types_frame, text="Audio")
+        audio_frame = ttk.LabelFrame(self.file_types_frame, text="Audio")
         audio_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
         
         # Create "Select All" checkbox for audio
@@ -251,7 +251,7 @@ class ArchimediusGUI:
             cb.grid(row=i // 2, column=i % 2, sticky=tk.W, padx=5)
         
         # Video extensions
-        video_frame = ttk.LabelFrame(file_types_frame, text="Video")
+        video_frame = ttk.LabelFrame(self.file_types_frame, text="Video")
         video_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
         
         # Create "Select All" checkbox for video
@@ -281,7 +281,7 @@ class ArchimediusGUI:
             cb.grid(row=i // 2, column=i % 2, sticky=tk.W, padx=5)
         
         # Image extensions
-        image_frame = ttk.LabelFrame(file_types_frame, text="Image")
+        image_frame = ttk.LabelFrame(self.file_types_frame, text="Image")
         image_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
         
         # Create "Select All" checkbox for image
@@ -311,7 +311,7 @@ class ArchimediusGUI:
             cb.grid(row=i // 2, column=i % 2, sticky=tk.W, padx=5)
 
         # eBook extensions
-        ebook_frame = ttk.LabelFrame(file_types_frame, text="eBook")
+        ebook_frame = ttk.LabelFrame(self.file_types_frame, text="eBook")
         ebook_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
 
         # Create "Select All" checkbox for eBook
@@ -590,12 +590,18 @@ class ArchimediusGUI:
         """Show the preferences dialog."""
         # Create a callback function to handle the result from the preferences dialog
         def on_save(result):
-            if result and 'extensions' in result:
-                # Update the global SUPPORTED_EXTENSIONS
-                global SUPPORTED_EXTENSIONS
-                SUPPORTED_EXTENSIONS = result['extensions']
-                # Save settings to file
-                self._save_settings()
+            if result:
+                if 'extensions' in result:
+                    # Update the global SUPPORTED_EXTENSIONS
+                    global SUPPORTED_EXTENSIONS
+                    SUPPORTED_EXTENSIONS = result['extensions']
+                    # Save settings to file
+                    self._save_settings()
+                    # Refresh extension filters if needed
+                    if result.get('refresh_extensions', False):
+                        self._refresh_extension_filters()
+                        # Auto-generate preview if enabled
+                        self._auto_generate_preview()
         
         # Create the preferences dialog with the callback
         PreferencesDialog(self.root, self, SUPPORTED_EXTENSIONS, callback=on_save)
@@ -1702,6 +1708,52 @@ class ArchimediusGUI:
             self.stop_button.config(state=tk.DISABLED)
             # Reset the processing_selected_files flag
             self.processing_selected_files = False
+
+    def _refresh_extension_filters(self):
+        """Refresh the extension filter checkboxes based on current SUPPORTED_EXTENSIONS."""
+        # Clear existing extension frames
+        for frame in self.file_types_frame.winfo_children():
+            frame.destroy()
+        
+        # Recreate extension frames for each file type
+        for file_type, frame_title in [
+            ("audio", "Audio"), ("video", "Video"), 
+            ("image", "Image"), ("ebook", "eBook")
+        ]:
+            # Create frame
+            type_frame = ttk.LabelFrame(self.file_types_frame, text=frame_title)
+            type_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
+            
+            # Create "Select All" checkbox
+            all_var = tk.BooleanVar(value=True)
+            setattr(self, f"{file_type}_all_var", all_var)
+            all_cb = ttk.Checkbutton(
+                type_frame,
+                text=f"All {frame_title}",
+                variable=all_var,
+                command=lambda ft=file_type: self._toggle_all_extensions(ft)
+            )
+            all_cb.pack(anchor=tk.W)
+            
+            # Create frame for extension checkboxes
+            extensions_frame = ttk.Frame(type_frame)
+            extensions_frame.pack(fill=tk.X, padx=10)
+            
+            # Clear existing extension vars for this type
+            self.extension_vars[file_type] = {}
+            
+            # Create checkboxes for each extension
+            for i, ext in enumerate(SUPPORTED_EXTENSIONS[file_type]):
+                ext_name = ext.lstrip(".")
+                var = tk.BooleanVar(value=True)
+                self.extension_vars[file_type][ext] = var
+                cb = ttk.Checkbutton(
+                    extensions_frame,
+                    text=ext_name,
+                    variable=var,
+                    command=self._update_extension_selection
+                )
+                cb.grid(row=i // 2, column=i % 2, sticky=tk.W, padx=5)
 
     # Copy all methods from the original MediaOrganizerGUI class
     # ... existing code ... 
