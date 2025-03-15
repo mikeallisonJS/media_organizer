@@ -11,7 +11,7 @@ import logging
 
 # Application information
 APP_NAME = "Archimedius"
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.1.1"
 APP_AUTHOR = "Mike Allison"
 APP_WEBSITE = "https://mikeallisonjs.com"
 APP_EMAIL = "support@mikeallisonjs.com"

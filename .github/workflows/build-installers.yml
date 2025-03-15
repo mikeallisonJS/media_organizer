@@ -47,8 +47,8 @@ jobs:
                   'CFBundleDisplayName': 'Archimedius',
                   'CFBundleGetInfoString': 'Media file organizer',
                   'CFBundleIdentifier': 'com.mikeallisonjs.archimedius',
-                  'CFBundleVersion': '0.1.0',
-                  'CFBundleShortVersionString': '0.1.0',
+                  'CFBundleVersion': '0.1.1',
+                  'CFBundleShortVersionString': '0.1.1',
                   'NSHumanReadableCopyright': '© 2025 Mike Allison',
                   'LSUIElement': False,  # Show in Dock
                   'LSBackgroundOnly': False,  # Not a background-only app
@@ -64,7 +64,7 @@ jobs:
               options={'py2app': OPTIONS},
               setup_requires=['py2app'],
               name='Archimedius',
-              version='0.1.0',
+              version='0.1.1',
               author='Mike Allison',
               author_email='support@mikeallisonjs.com',
               url='https://mikeallisonjs.com',
@@ -173,10 +173,13 @@ jobs:
             ; Copy all files from the dist directory
             File /r "dist\Archimedius\*.*"
             
-            ; Create shortcuts
+            ; Create Start Menu directory first
+            SetShellVarContext all
             CreateDirectory "$SMPROGRAMS\Archimedius"
-            CreateShortcut "$SMPROGRAMS\Archimedius\Archimedius.lnk" "$INSTDIR\Archimedius.exe"
-            CreateShortcut "$DESKTOP\Archimedius.lnk" "$INSTDIR\Archimedius.exe"
+            
+            ; Create shortcuts
+            CreateShortCut "$SMPROGRAMS\Archimedius\Archimedius.lnk" "$INSTDIR\Archimedius.exe"
+            CreateShortCut "$DESKTOP\Archimedius.lnk" "$INSTDIR\Archimedius.exe"
             
             ; Write uninstaller
             WriteUninstaller "$INSTDIR\Uninstall.exe"
@@ -187,11 +190,13 @@ jobs:
             WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Archimedius" "QuietUninstallString" "$\"$INSTDIR\Uninstall.exe$\" /S"
             WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Archimedius" "DisplayIcon" "$\"$INSTDIR\Archimedius.exe$\""
             WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Archimedius" "Publisher" "Mike Allison"
-            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Archimedius" "DisplayVersion" "0.1.0"
+            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Archimedius" "DisplayVersion" "0.1.1"
           SectionEnd
 
           ; Uninstaller section
           Section "Uninstall"
+            SetShellVarContext all
+            
             ; Remove installed files
             RMDir /r "$INSTDIR"
             
