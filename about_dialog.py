@@ -21,9 +21,9 @@ class AboutDialog:
         # Create a new top-level window
         self.window = tk.Toplevel(parent)
         self.window.title(f"About {defaults.APP_NAME}")
-        self.window.geometry(defaults.DEFAULT_WINDOW_SIZES.get("about_dialog", "500x400"))
-        self.window.minsize(500, 400)
-        self.window.maxsize(500, 400)
+        self.window.geometry(defaults.DEFAULT_WINDOW_SIZES.get("about_dialog", "500x375"))
+        self.window.minsize(500, 375)
+        self.window.maxsize(500, 375)
         self.window.resizable(False, False)  # Disable resizing
         self.window.transient(parent)  # Make it a modal dialog
         self.window.grab_set()  # Make it modal
@@ -31,7 +31,7 @@ class AboutDialog:
         # Center the window
         self.window.update_idletasks()
         width = 500
-        height = 400
+        height = 375
         x = (self.window.winfo_screenwidth() // 2) - (width // 2)
         y = (self.window.winfo_screenheight() // 2) - (height // 2)
         self.window.geometry(f"{width}x{height}+{x}+{y}")
@@ -70,24 +70,6 @@ class AboutDialog:
         )
         description_label.pack(pady=(0, 20))
         
-        # Features frame
-        features_frame = ttk.LabelFrame(content_frame, text="Key Features", padding=10)
-        features_frame.pack(fill=tk.X, pady=5)
-        
-        features_text = (
-            "• Organize files by metadata (artist, album, date, etc.)\n"
-            "• Support for audio, video, image, and eBook files\n"
-            "• Customizable organization templates\n"
-            "• Preview before organizing\n"
-            "• Copy or move files"
-        )
-        features_label = ttk.Label(
-            features_frame, 
-            text=features_text,
-            justify=tk.LEFT
-        )
-        features_label.pack(anchor=tk.W)
-        
         # Credits
         credits_label = ttk.Label(
             content_frame, 
@@ -125,34 +107,11 @@ class AboutDialog:
             website_frame, 
             text=defaults.APP_WEBSITE,
             font=("TkDefaultFont", 9),
-            foreground="blue",
+            foreground="#4A9EFF",
             cursor="hand2"
         )
         website_link.pack(side=tk.LEFT)
         website_link.bind("<Button-1>", lambda e: webbrowser.open(defaults.APP_WEBSITE))
-        
-        # Email link
-        email_frame = ttk.Frame(contact_frame)
-        email_frame.pack(fill=tk.X, pady=2)
-        
-        email_label = ttk.Label(
-            email_frame, 
-            text="Email:",
-            font=("TkDefaultFont", 9),
-            width=10,
-            anchor=tk.E
-        )
-        email_label.pack(side=tk.LEFT, padx=(0, 5))
-        
-        email_link = ttk.Label(
-            email_frame, 
-            text=defaults.APP_EMAIL,
-            font=("TkDefaultFont", 9),
-            foreground="blue",
-            cursor="hand2"
-        )
-        email_link.pack(side=tk.LEFT)
-        email_link.bind("<Button-1>", lambda e: webbrowser.open(f"mailto:{defaults.APP_EMAIL}"))
         
         # Close button
         close_button = ttk.Button(

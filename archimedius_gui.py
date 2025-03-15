@@ -686,8 +686,9 @@ class ArchimediusGUI:
         self._clear_preview()
         
         # Update status to show preview is generating
-        self.status_var.set("Analyzing files and generating preview...")
-        self.file_var.set("Please wait while files are being analyzed...")
+        self.status_var.set("Finding files...")
+        self.file_var.set("Scanning for media files...")
+        self.progress_var.set(0)
         self.root.update_idletasks()
         
         # Start preview generation in a separate thread
@@ -732,13 +733,33 @@ class ArchimediusGUI:
                 except Exception as e:
                     logger.error(f"Error checking directory relationship: {e}")
 
-            # Find up to 100 files for preview
+            # First pass: Count total files for progress tracking
+            self.root.after(0, lambda: self.status_var.set("Counting files..."))
+            total_files = 0
+            for file_path in source_path.rglob("*"):
+                # Skip files in the destination directory if it's inside the source
+                if is_dest_in_source and file_path.is_file():
+                    try:
+                        rel_path = file_path.relative_to(source_path)
+                        dest_path = Path(output_dir) / rel_path
+                        if file_path.is_relative_to(Path(output_dir)) or file_path == dest_path:
+                            continue
+                    except (ValueError, RuntimeError):
+                        pass  # Not relative, so continue processing
+                        
+                if file_path.is_file() and file_path.suffix.lower() in selected_extensions:
+                    total_files += 1
+                    if total_files % 100 == 0:  # Update status periodically
+                        self.root.after(0, lambda count=total_files: self.file_var.set(f"Found {count} files..."))
+
+            # Second pass: Process files for preview
+            self.root.after(0, lambda: self.status_var.set("Finding file details..."))
             preview_files = []
-            count = 0
+            processed = 0
             
             for file_path in source_path.rglob("*"):
                 # Skip files in the destination directory if it's inside the source
-                if is_dest_in_source and output_dir and file_path.is_file():
+                if is_dest_in_source and file_path.is_file():
                     try:
                         rel_path = file_path.relative_to(source_path)
                         dest_path = Path(output_dir) / rel_path
@@ -749,15 +770,22 @@ class ArchimediusGUI:
                         
                 if file_path.is_file() and file_path.suffix.lower() in selected_extensions:
                     preview_files.append(file_path)
-                    count += 1
-                    if count >= 100:  # Limit to 100 files for preview
+                    processed += 1
+                    # Update progress every 10 files or for the last file
+                    if processed % 10 == 0 or processed == total_files:
+                        progress = (processed / total_files) * 100 if total_files > 0 else 0
+                        self.root.after(0, lambda p=progress: self.progress_var.set(p))
+                        self.root.after(0, lambda p=processed, t=total_files: 
+                            self.file_var.set(f"Found {p} of {t} files..."))
+                    
+                    if processed >= 100:  # Limit to 100 files for preview
                         break
             
             # Prepare preview data
             preview_data = []
             
             # Generate preview for each file
-            for file_path in preview_files:
+            for i, file_path in enumerate(preview_files):
                 try:
                     # Extract metadata
                     media_file = MediaFile(file_path, SUPPORTED_EXTENSIONS)
@@ -790,12 +818,15 @@ class ArchimediusGUI:
                     logger.error(f"Error generating preview for {file_path}: {e}")
             
             # Update UI in the main thread
-            self.root.after(0, lambda: self._update_preview_results(preview_data, count))
+            self.root.after(0, lambda: self._update_preview_results(preview_data, processed))
 
         except Exception as e:
             logger.error(f"Error generating preview: {e}")
             # Update UI in the main thread
             self.root.after(0, lambda: self._update_preview_status(f"Preview generation failed: {str(e)}", error=True))
+        finally:
+            # Reset progress bar
+            self.root.after(0, lambda: self.progress_var.set(0))
 
     def _update_preview_results(self, preview_data, count):
         """Update the preview treeview with results from the preview thread."""
