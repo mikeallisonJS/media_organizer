@@ -86,9 +86,33 @@ jobs:
         run: |
           choco install nsis -y
 
+      - name: Set environment variables
+        run: |
+          echo "APP_NAME=$(python -c "import defaults; print(defaults.APP_NAME)")" | Out-File -FilePath $env:GITHUB_ENV -Append
+
       - name: Build Windows executable and installer
         run: |
           python build_win.py
+
+      - name: Verify installer file
+        id: find_installer
+        run: |
+          dir
+          echo "Looking for installer file..."
+          if (Test-Path "Archimedius-Setup.exe") {
+            echo "Installer file found at root"
+            echo "INSTALLER_PATH=Archimedius-Setup.exe" | Out-File -FilePath $env:GITHUB_ENV -Append
+          } else {
+            echo "Searching for installer file..."
+            $installerFile = Get-ChildItem -Path . -Recurse -Filter "*Setup.exe" | Select-Object -First 1
+            if ($installerFile) {
+              echo "Found: $($installerFile.FullName)"
+              echo "INSTALLER_PATH=$($installerFile.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
+            } else {
+              echo "No installer file found"
+              exit 1
+            }
+          }
 
       - name: Upload Windows installer
         uses: actions/upload-release-asset@v1
@@ -96,6 +120,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./Archimedius-Setup.exe
+          asset_path: ${{ env.INSTALLER_PATH }}
           asset_name: Archimedius-${{ github.event.release.tag_name }}-Windows.exe
           asset_content_type: application/octet-stream

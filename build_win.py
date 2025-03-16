@@ -148,8 +148,15 @@ def build_installer():
     
     # Build installer
     subprocess.run([nsis_path, "installer.nsi"], check=True)
-    print("Windows installer built successfully.")
-    return True
+    
+    # Verify installer was created
+    installer_path = f"{defaults.APP_NAME}-Setup.exe"
+    if os.path.exists(installer_path):
+        print(f"Windows installer built successfully at: {os.path.abspath(installer_path)}")
+        return True
+    else:
+        print(f"Error: Installer file not found at {os.path.abspath(installer_path)}")
+        return False
 
 def main():
     """Main function to build Windows executable and installer."""
@@ -172,7 +179,21 @@ def main():
         
         # Build installer
         if build_installer():
-            print(f"Build completed successfully. Installer is at: {defaults.APP_NAME}-Setup.exe")
+            # Ensure installer is in the root directory
+            installer_path = f"{defaults.APP_NAME}-Setup.exe"
+            if not os.path.exists(installer_path):
+                # Search for the installer file
+                for root, dirs, files in os.walk('.'):
+                    for file in files:
+                        if file.endswith('-Setup.exe'):
+                            found_path = os.path.join(root, file)
+                            print(f"Found installer at: {found_path}")
+                            # Copy to root directory
+                            shutil.copy(found_path, installer_path)
+                            print(f"Copied installer to: {os.path.abspath(installer_path)}")
+                            break
+            
+            print(f"Build completed successfully. Installer is at: {os.path.abspath(installer_path)}")
     except Exception as e:
         print(f"Error during build: {e}")
 
