@@ -21,7 +21,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install py2app
+          pip install setuptools==70.3.0 py2app
 
       - name: Install MediaInfo
         run: |
@@ -29,48 +29,8 @@ jobs:
 
       - name: Build macOS app
         run: |
-          # Create setup.py for py2app
-          cat > setup.py << 'EOF'
-          from setuptools import setup
-          import os
-          import sys
-
-          APP = ['main.py']
-          DATA_FILES = []
-          OPTIONS = {
-              'argv_emulation': True,
-              'packages': ['tkinter'],
-              'includes': ['PIL', 'tinytag', 'pymediainfo'],
-              'iconfile': 'resources/archimedius.icns',
-              'plist': {
-                  'CFBundleName': 'Archimedius',
-                  'CFBundleDisplayName': 'Archimedius',
-                  'CFBundleGetInfoString': 'Media file organizer',
-                  'CFBundleIdentifier': 'com.mikeallisonjs.archimedius',
-                  'CFBundleVersion': '0.1.1',
-                  'CFBundleShortVersionString': '0.1.1',
-                  'NSHumanReadableCopyright': '© 2025 Mike Allison',
-                  'LSUIElement': False,  # Show in Dock
-                  'LSBackgroundOnly': False,  # Not a background-only app
-                  'CFBundleDocumentTypes': [],  # No document types
-                  'NSHighResolutionCapable': True,  # Enable Retina display support
-                  'NSRequiresAquaSystemAppearance': False  # Support Dark Mode
-              }
-          }
-
-          setup(
-              app=APP,
-              data_files=DATA_FILES,
-              options={'py2app': OPTIONS},
-              setup_requires=['py2app'],
-              name='Archimedius',
-              version='0.1.1',
-              author='Mike Allison',
-              author_email='support@mikeallisonjs.com',
-              url='https://mikeallisonjs.com',
-              description='Media file organizer',
-          )
-          EOF
+          # Use the build_mac.py file instead of creating setup.py
+          cp build_mac.py setup.py
 
       - name: Build macOS app bundle
         run: |
@@ -120,100 +80,15 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pyinstaller
-
-      - name: Download MediaInfo
-        run: |
-          Invoke-WebRequest -Uri "https://mediaarea.net/download/binary/mediainfo/23.11/MediaInfo_CLI_23.11_Windows_x64.zip" -OutFile "mediainfo.zip"
-          Expand-Archive -Path "mediainfo.zip" -DestinationPath "mediainfo"
-          Copy-Item -Path "mediainfo/MediaInfo.exe" -Destination .
-
-      - name: Build Windows executable
-        run: |
-          pyinstaller --name Archimedius --windowed --icon=resources/archimedius.ico --add-data "MediaInfo.exe;." main.py
+          pip install pyinstaller requests
 
       - name: Install NSIS
         run: |
           choco install nsis -y
 
-      - name: Create NSIS installer script
+      - name: Build Windows executable and installer
         run: |
-          @"
-          !include "MUI2.nsh"
-
-          ; Application information
-          Name "Archimedius"
-          OutFile "Archimedius-Setup.exe"
-          InstallDir "$PROGRAMFILES64\Archimedius"
-          InstallDirRegKey HKCU "Software\Archimedius" ""
-          RequestExecutionLevel admin
-
-          ; Interface settings
-          !define MUI_ABORTWARNING
-          !define MUI_ICON "resources\archimedius.ico"
-          !define MUI_UNICON "resources\archimedius.ico"
-
-          ; Pages
-          !insertmacro MUI_PAGE_WELCOME
-          !insertmacro MUI_PAGE_LICENSE "LICENSE"
-          !insertmacro MUI_PAGE_DIRECTORY
-          !insertmacro MUI_PAGE_INSTFILES
-          !insertmacro MUI_PAGE_FINISH
-
-          !insertmacro MUI_UNPAGE_CONFIRM
-          !insertmacro MUI_UNPAGE_INSTFILES
-
-          ; Languages
-          !insertmacro MUI_LANGUAGE "English"
-
-          ; Installer sections
-          Section "Archimedius" SecMain
-            SetOutPath "$INSTDIR"
-            
-            ; Copy all files from the dist directory
-            File /r "dist\Archimedius\*.*"
-            
-            ; Create Start Menu directory first
-            SetShellVarContext all
-            CreateDirectory "$SMPROGRAMS\Archimedius"
-            
-            ; Create shortcuts
-            CreateShortCut "$SMPROGRAMS\Archimedius\Archimedius.lnk" "$INSTDIR\Archimedius.exe"
-            CreateShortCut "$DESKTOP\Archimedius.lnk" "$INSTDIR\Archimedius.exe"
-            
-            ; Write uninstaller
-            WriteUninstaller "$INSTDIR\Uninstall.exe"
-            
-            ; Write registry keys for uninstall
-            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Archimedius" "DisplayName" "Archimedius"
-            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Archimedius" "UninstallString" "$\"$INSTDIR\Uninstall.exe$\""
-            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Archimedius" "QuietUninstallString" "$\"$INSTDIR\Uninstall.exe$\" /S"
-            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Archimedius" "DisplayIcon" "$\"$INSTDIR\Archimedius.exe$\""
-            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Archimedius" "Publisher" "Mike Allison"
-            WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Archimedius" "DisplayVersion" "0.1.1"
-          SectionEnd
-
-          ; Uninstaller section
-          Section "Uninstall"
-            SetShellVarContext all
-            
-            ; Remove installed files
-            RMDir /r "$INSTDIR"
-            
-            ; Remove shortcuts
-            Delete "$SMPROGRAMS\Archimedius\Archimedius.lnk"
-            RMDir "$SMPROGRAMS\Archimedius"
-            Delete "$DESKTOP\Archimedius.lnk"
-            
-            ; Remove registry keys
-            DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Archimedius"
-            DeleteRegKey HKCU "Software\Archimedius"
-          SectionEnd
-          "@ | Out-File -FilePath "installer.nsi" -Encoding utf8
-
-      - name: Build Windows installer
-        run: |
-          & 'C:\Program Files (x86)\NSIS\makensis.exe' installer.nsi
+          python build_win.py
 
       - name: Upload Windows installer
         uses: actions/upload-release-asset@v1
