@@ -80,7 +80,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
-          pip install pyinstaller requests
+          pip install pyinstaller requests pillow
 
       - name: Install NSIS
         run: |

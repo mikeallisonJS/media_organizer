@@ -93,80 +93,62 @@ def create_nsis_script():
             print("  dist directory does not exist")
         raise FileNotFoundError(f"Dist directory not found: {dist_dir}")
     
-    # Create the NSIS script content
-    script_content = """
-!include "MUI2.nsh"
+    # Create a very simple NSIS script
+    script_content = f"""
+; Basic installer script for {defaults.APP_NAME}
+Unicode true
 
-; Application information
-Name "{0}"
-OutFile "{3}"
-InstallDir "$PROGRAMFILES64\\{0}"
-InstallDirRegKey HKCU "Software\\{0}" ""
+; Define constants
+!define APPNAME "{defaults.APP_NAME}"
+!define COMPANYNAME "{defaults.APP_AUTHOR}"
+!define DESCRIPTION "Media file organizer"
+!define VERSIONMAJOR {defaults.APP_VERSION.split('.')[0]}
+!define VERSIONMINOR {defaults.APP_VERSION.split('.')[1]}
+!define VERSIONBUILD {defaults.APP_VERSION.split('.')[2]}
+!define INSTALLSIZE 100000
+
+; Main Install settings
+Name "${{APPNAME}}"
+InstallDir "$PROGRAMFILES64\\${{APPNAME}}"
+OutFile "{installer_path}"
 RequestExecutionLevel admin
 
-; Interface settings
-!define MUI_ABORTWARNING
-!define MUI_ICON "resources\\archimedius.ico"
-!define MUI_UNICON "resources\\archimedius.ico"
-
-; Pages
-!insertmacro MUI_PAGE_WELCOME
-!insertmacro MUI_PAGE_LICENSE "LICENSE"
-!insertmacro MUI_PAGE_DIRECTORY
-!insertmacro MUI_PAGE_INSTFILES
-!insertmacro MUI_PAGE_FINISH
-
-!insertmacro MUI_UNPAGE_CONFIRM
-!insertmacro MUI_UNPAGE_INSTFILES
-
-; Languages
-!insertmacro MUI_LANGUAGE "English"
-
-; Installer sections
-Section "{0}" SecMain
-  SetOutPath "$INSTDIR"
-  
-  ; Copy all files from the dist directory
-  File /r "{4}\\*.*"
-  
-  ; Create Start Menu directory first
-  SetShellVarContext all
-  CreateDirectory "$SMPROGRAMS\\{0}"
-  
-  ; Create shortcuts
-  CreateShortCut "$SMPROGRAMS\\{0}\\{0}.lnk" "$INSTDIR\\{0}.exe"
-  CreateShortCut "$DESKTOP\\{0}.lnk" "$INSTDIR\\{0}.exe"
-  
-  ; Write uninstaller
-  WriteUninstaller "$INSTDIR\\Uninstall.exe"
-  
-  ; Write registry keys for uninstall
-  WriteRegStr HKLM "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{0}" "DisplayName" "{0}"
-  WriteRegStr HKLM "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{0}" "UninstallString" "$\\"$INSTDIR\\Uninstall.exe$\\""
-  WriteRegStr HKLM "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{0}" "QuietUninstallString" "$\\"$INSTDIR\\Uninstall.exe$\" /S"
-  WriteRegStr HKLM "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{0}" "DisplayIcon" "$\\"$INSTDIR\\{0}.exe$\\""
-  WriteRegStr HKLM "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{0}" "Publisher" "{1}"
-  WriteRegStr HKLM "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{0}" "DisplayVersion" "{2}"
+Section "Install"
+    ; Set output path to the installation directory
+    SetOutPath $INSTDIR
+    
+    ; Copy all files from dist directory
+    File /r "{dist_dir}\\*.*"
+    
+    ; Create Start Menu shortcut
+    CreateDirectory "$SMPROGRAMS\\${{APPNAME}}"
+    CreateShortCut "$SMPROGRAMS\\${{APPNAME}}\\${{APPNAME}}.lnk" "$INSTDIR\\${{APPNAME}}.exe"
+    CreateShortCut "$DESKTOP\\${{APPNAME}}.lnk" "$INSTDIR\\${{APPNAME}}.exe"
+    
+    ; Create uninstaller
+    WriteUninstaller "$INSTDIR\\Uninstall.exe"
+    
+    ; Write registry keys for uninstall
+    WriteRegStr HKLM "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\${{APPNAME}}" "DisplayName" "${{APPNAME}}"
+    WriteRegStr HKLM "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\${{APPNAME}}" "UninstallString" "$\\"$INSTDIR\\Uninstall.exe$\\""
+    WriteRegStr HKLM "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\${{APPNAME}}" "DisplayIcon" "$\\"$INSTDIR\\${{APPNAME}}.exe$\\""
+    WriteRegStr HKLM "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\${{APPNAME}}" "Publisher" "${{COMPANYNAME}}"
+    WriteRegStr HKLM "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\${{APPNAME}}" "DisplayVersion" "{defaults.APP_VERSION}"
 SectionEnd
 
-; Uninstaller section
 Section "Uninstall"
-  SetShellVarContext all
-  
-  ; Remove installed files
-  RMDir /r "$INSTDIR"
-  
-  ; Remove shortcuts
-  Delete "$SMPROGRAMS\\{0}\\{0}.lnk"
-  RMDir "$SMPROGRAMS\\{0}"
-  Delete "$DESKTOP\\{0}.lnk"
-  
-  ; Remove registry keys
-  DeleteRegKey HKLM "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{0}"
-  DeleteRegKey HKCU "Software\\{0}"
+    ; Remove Start Menu shortcut
+    Delete "$SMPROGRAMS\\${{APPNAME}}\\${{APPNAME}}.lnk"
+    RMDir "$SMPROGRAMS\\${{APPNAME}}"
+    Delete "$DESKTOP\\${{APPNAME}}.lnk"
+    
+    ; Remove files and uninstaller
+    RMDir /r "$INSTDIR"
+    
+    ; Remove registry keys
+    DeleteRegKey HKLM "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\${{APPNAME}}"
 SectionEnd
-""".format(defaults.APP_NAME, defaults.APP_AUTHOR, defaults.APP_VERSION, 
-           installer_path.replace('\\', '\\\\'), dist_dir.replace('\\', '\\\\'))
+"""
     
     # Write NSIS script to file
     with open("installer.nsi", "w", encoding="utf-8") as f:
@@ -186,8 +168,37 @@ def build_installer(installer_path):
         print("You can install NSIS using: choco install nsis -y")
         return False
     
-    # Build installer
-    subprocess.run([nsis_path, "installer.nsi"], check=True)
+    # Build installer with detailed output
+    try:
+        # Run NSIS with verbose output
+        result = subprocess.run(
+            [nsis_path, "/V4", "installer.nsi"], 
+            check=False,
+            capture_output=True,
+            text=True
+        )
+        
+        # Print the output regardless of success/failure
+        print("NSIS Output:")
+        print(result.stdout)
+        
+        if result.stderr:
+            print("NSIS Error Output:")
+            print(result.stderr)
+        
+        # Check if the command was successful
+        if result.returncode != 0:
+            print(f"NSIS compilation failed with exit code: {result.returncode}")
+            
+            # Print the NSIS script for debugging
+            print("\nNSIS Script Content:")
+            with open("installer.nsi", "r", encoding="utf-8") as f:
+                print(f.read())
+                
+            return False
+    except Exception as e:
+        print(f"Error running NSIS: {e}")
+        return False
     
     # Verify installer was created
     if os.path.exists(installer_path):
@@ -207,6 +218,26 @@ def main():
         return
     
     try:
+        # Check for resources directory and icon
+        resources_dir = os.path.join(os.path.abspath('.'), "resources")
+        icon_path = os.path.join(resources_dir, "archimedius.ico")
+        
+        if not os.path.exists(resources_dir):
+            print(f"Warning: Resources directory not found at {resources_dir}")
+            os.makedirs(resources_dir, exist_ok=True)
+            print(f"Created resources directory at {resources_dir}")
+        
+        if not os.path.exists(icon_path):
+            print(f"Warning: Icon file not found at {icon_path}")
+            # Create a simple icon if possible
+            try:
+                from PIL import Image
+                img = Image.new('RGB', (256, 256), color=(73, 109, 137))
+                img.save(icon_path)
+                print(f"Created a simple icon at {icon_path}")
+            except Exception as e:
+                print(f"Could not create icon: {e}")
+        
         # Download MediaInfo
         download_mediainfo()
         
