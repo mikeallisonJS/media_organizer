@@ -104,12 +104,19 @@ jobs:
             echo "INSTALLER_PATH=Archimedius-Setup.exe" | Out-File -FilePath $env:GITHUB_ENV -Append
           } else {
             echo "Searching for installer file..."
-            $installerFile = Get-ChildItem -Path . -Recurse -Filter "*Setup.exe" | Select-Object -First 1
+            Get-ChildItem -Path . -Recurse -Include "*Setup.exe", "*.exe" | ForEach-Object { echo "Found: $($_.FullName)" }
+            $installerFile = Get-ChildItem -Path . -Recurse -Include "*Setup.exe" | Select-Object -First 1
             if ($installerFile) {
               echo "Found: $($installerFile.FullName)"
               echo "INSTALLER_PATH=$($installerFile.FullName)" | Out-File -FilePath $env:GITHUB_ENV -Append
             } else {
               echo "No installer file found"
+              echo "Checking dist directory:"
+              if (Test-Path "dist") {
+                Get-ChildItem -Path "dist" -Recurse | ForEach-Object { echo "dist item: $($_.FullName)" }
+              } else {
+                echo "dist directory not found"
+              }
               exit 1
             }
           }

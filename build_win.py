@@ -49,11 +49,49 @@ def build_executable():
     
     # Run PyInstaller
     subprocess.run(cmd, check=True)
-    print("Windows executable built successfully.")
+    
+    # Verify the executable was created
+    dist_dir = os.path.join("dist", defaults.APP_NAME)
+    exe_path = os.path.join(dist_dir, f"{defaults.APP_NAME}.exe")
+    
+    if os.path.exists(exe_path):
+        print(f"Windows executable built successfully at: {exe_path}")
+        # List contents of dist directory
+        print("Contents of dist directory:")
+        for root, dirs, files in os.walk(dist_dir):
+            for file in files:
+                print(f"  {os.path.join(root, file)}")
+        return True
+    else:
+        print(f"Error: Executable not found at {exe_path}")
+        if os.path.exists("dist"):
+            print("Contents of dist directory:")
+            for root, dirs, files in os.walk("dist"):
+                for file in files:
+                    print(f"  {os.path.join(root, file)}")
+        else:
+            print("dist directory not found")
+        return False
 
 def create_nsis_script():
     """Create the NSIS installer script."""
     print("Creating NSIS installer script...")
+    
+    # Get current directory for absolute paths
+    current_dir = os.path.abspath('.')
+    installer_path = os.path.join(current_dir, f"{defaults.APP_NAME}-Setup.exe")
+    dist_dir = os.path.join(current_dir, "dist", defaults.APP_NAME)
+    
+    # Verify dist directory exists
+    if not os.path.exists(dist_dir):
+        print(f"Error: Dist directory not found at {dist_dir}")
+        print("Available directories in dist:")
+        if os.path.exists("dist"):
+            for item in os.listdir("dist"):
+                print(f"  {item}")
+        else:
+            print("  dist directory does not exist")
+        raise FileNotFoundError(f"Dist directory not found: {dist_dir}")
     
     # Create the NSIS script content
     script_content = """
@@ -61,7 +99,7 @@ def create_nsis_script():
 
 ; Application information
 Name "{0}"
-OutFile "{0}-Setup.exe"
+OutFile "{3}"
 InstallDir "$PROGRAMFILES64\\{0}"
 InstallDirRegKey HKCU "Software\\{0}" ""
 RequestExecutionLevel admin
@@ -89,7 +127,7 @@ Section "{0}" SecMain
   SetOutPath "$INSTDIR"
   
   ; Copy all files from the dist directory
-  File /r "dist\\{0}\\*.*"
+  File /r "{4}\\*.*"
   
   ; Create Start Menu directory first
   SetShellVarContext all
@@ -127,15 +165,17 @@ Section "Uninstall"
   DeleteRegKey HKLM "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{0}"
   DeleteRegKey HKCU "Software\\{0}"
 SectionEnd
-""".format(defaults.APP_NAME, defaults.APP_AUTHOR, defaults.APP_VERSION)
+""".format(defaults.APP_NAME, defaults.APP_AUTHOR, defaults.APP_VERSION, 
+           installer_path.replace('\\', '\\\\'), dist_dir.replace('\\', '\\\\'))
     
     # Write NSIS script to file
     with open("installer.nsi", "w", encoding="utf-8") as f:
         f.write(script_content)
     
-    print("NSIS installer script created successfully.")
+    print(f"NSIS installer script created successfully. Installer will be created at: {installer_path}")
+    return installer_path
 
-def build_installer():
+def build_installer(installer_path):
     """Build the Windows installer using NSIS."""
     print("Building Windows installer...")
     
@@ -150,12 +190,11 @@ def build_installer():
     subprocess.run([nsis_path, "installer.nsi"], check=True)
     
     # Verify installer was created
-    installer_path = f"{defaults.APP_NAME}-Setup.exe"
     if os.path.exists(installer_path):
-        print(f"Windows installer built successfully at: {os.path.abspath(installer_path)}")
+        print(f"Windows installer built successfully at: {installer_path}")
         return True
     else:
-        print(f"Error: Installer file not found at {os.path.abspath(installer_path)}")
+        print(f"Error: Installer file not found at {installer_path}")
         return False
 
 def main():
@@ -172,30 +211,50 @@ def main():
         download_mediainfo()
         
         # Build executable
-        build_executable()
-        
-        # Create NSIS installer script
-        create_nsis_script()
-        
-        # Build installer
-        if build_installer():
-            # Ensure installer is in the root directory
-            installer_path = f"{defaults.APP_NAME}-Setup.exe"
-            if not os.path.exists(installer_path):
-                # Search for the installer file
-                for root, dirs, files in os.walk('.'):
-                    for file in files:
-                        if file.endswith('-Setup.exe'):
-                            found_path = os.path.join(root, file)
-                            print(f"Found installer at: {found_path}")
-                            # Copy to root directory
-                            shutil.copy(found_path, installer_path)
-                            print(f"Copied installer to: {os.path.abspath(installer_path)}")
-                            break
+        if build_executable():
+            # Create NSIS installer script
+            installer_path = create_nsis_script()
             
-            print(f"Build completed successfully. Installer is at: {os.path.abspath(installer_path)}")
+            # Build installer
+            if build_installer(installer_path):
+                # Verify the installer exists
+                if os.path.exists(installer_path):
+                    print(f"Build completed successfully. Installer is at: {installer_path}")
+                    
+                    # Copy to root directory with standard name if needed
+                    root_installer = f"{defaults.APP_NAME}-Setup.exe"
+                    if os.path.abspath(installer_path) != os.path.abspath(root_installer):
+                        shutil.copy(installer_path, root_installer)
+                        print(f"Copied installer to: {os.path.abspath(root_installer)}")
+                else:
+                    # Search for the installer file
+                    print("Installer not found at expected path. Searching...")
+                    found = False
+                    for root, dirs, files in os.walk('.'):
+                        for file in files:
+                            if file.endswith('-Setup.exe'):
+                                found_path = os.path.join(root, file)
+                                print(f"Found installer at: {found_path}")
+                                # Copy to root directory
+                                root_installer = f"{defaults.APP_NAME}-Setup.exe"
+                                shutil.copy(found_path, root_installer)
+                                print(f"Copied installer to: {os.path.abspath(root_installer)}")
+                                found = True
+                                break
+                        if found:
+                            break
+                    
+                    if not found:
+                        print("ERROR: Could not find installer file anywhere!")
+                        sys.exit(1)
+        else:
+            print("ERROR: Failed to build executable")
+            sys.exit(1)
     except Exception as e:
         print(f"Error during build: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 if __name__ == "__main__":
     main() 
