@@ -1022,9 +1022,38 @@ class ArchimediusGUI:
         y = (help_window.winfo_screenheight() // 2) - (height // 2)
         help_window.geometry(f"{width}x{height}+{x}+{y}")
         
-        # Create a frame for the content
-        content_frame = ttk.Frame(help_window, padding=20)
-        content_frame.pack(fill=tk.BOTH, expand=True)
+        # Create a scrollable content area so all placeholders are accessible.
+        scroll_container = ttk.Frame(help_window)
+        scroll_container.pack(fill=tk.BOTH, expand=True)
+
+        canvas = tk.Canvas(scroll_container, highlightthickness=0, borderwidth=0)
+        scrollbar = ttk.Scrollbar(
+            scroll_container, orient="vertical", command=canvas.yview
+        )
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        content_frame = ttk.Frame(canvas, padding=20)
+        content_window = canvas.create_window((0, 0), window=content_frame, anchor="nw")
+
+        def _sync_scroll_region(_event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+
+        def _sync_content_width(event):
+            canvas.itemconfigure(content_window, width=event.width)
+
+        content_frame.bind("<Configure>", _sync_scroll_region)
+        canvas.bind("<Configure>", _sync_content_width)
+
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        help_window.bind(
+            "<Destroy>",
+            lambda _event: canvas.unbind_all("<MouseWheel>"),
+        )
         
         # Title
         title_label = ttk.Label(
