@@ -5,8 +5,8 @@ APP = ['main.py']
 DATA_FILES = []
 OPTIONS = {
     'argv_emulation': False,
-    'packages': ['tkinter', 'PIL', 'tinytag', 'pymediainfo', 'pypdf', 'TKinterModernThemes'],
-    'includes': ['PIL', 'tkinter', 'tinytag', 'pymediainfo', 'pypdf', 'TKinterModernThemes', 'PIL._tkinter_finder'],
+    'packages': ['tkinter', 'PIL', 'tinytag', 'pymediainfo', 'pypdf', 'ttkbootstrap'],
+    'includes': ['PIL', 'tkinter', 'tinytag', 'pymediainfo', 'pypdf', 'ttkbootstrap', 'PIL._tkinter_finder'],
     'iconfile': 'resources/archimedius.icns',
     'plist': {
         'CFBundleName': defaults.APP_NAME,
@@ -34,7 +34,7 @@ setup(
         'tinytag',
         'pymediainfo',
         'pypdf',
-        'TKinterModernThemes'
+        'ttkbootstrap'
     ],
     name=defaults.APP_NAME,
     version=defaults.APP_VERSION,

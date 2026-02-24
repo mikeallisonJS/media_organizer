@@ -4,9 +4,9 @@ Archimedius - A tool to organize media files based on metadata.
 """
 
 import logging
-import tkinter as tk
 from pathlib import Path
 import json
+from ttkbootstrap import Window
 
 # Import application modules
 import defaults
@@ -44,7 +44,7 @@ def main():
         except Exception as e:
             logger.error(f"Error loading logging level from settings: {e}")
     
-    root = tk.Tk()
+    root = Window(themename="flatly")
     app = ArchimediusGUI(root)
     root.mainloop()
 

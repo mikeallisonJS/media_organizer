@@ -9,10 +9,10 @@ import shutil
 import logging
 import threading
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
+from tkinter import filedialog, messagebox, ttk
 from pathlib import Path
 import json
-import TKinterModernThemes as TKMT
+from ttkbootstrap import Style
 
 # Import application modules
 import extensions
@@ -30,6 +30,45 @@ logger = logging.getLogger("Archimedius")
 
 # Initialize SUPPORTED_EXTENSIONS from the defaults module
 SUPPORTED_EXTENSIONS = defaults.get_default_extensions()
+
+class CollapsingFrame(ttk.Frame):
+    """Simple collapsing frame compatible with ttkbootstrap widgets."""
+
+    def __init__(self, master=None, **kwargs):
+        super().__init__(master, **kwargs)
+        self._sections = []
+
+    def add(self, child, title="Section", bootstyle="secondary"):
+        """Add a collapsible child section."""
+        header = ttk.Frame(self)
+        header.pack(fill=tk.X, pady=(0, 2))
+
+        is_expanded = tk.BooleanVar(value=True)
+        icon_var = tk.StringVar(value="▾")
+
+        def toggle():
+            if is_expanded.get():
+                child.pack_forget()
+                is_expanded.set(False)
+                icon_var.set("▸")
+            else:
+                child.pack(fill=tk.X, pady=2)
+                is_expanded.set(True)
+                icon_var.set("▾")
+
+        toggle_button = ttk.Button(
+            header,
+            textvariable=icon_var,
+            width=2,
+            command=toggle,
+        )
+        toggle_button.pack(side=tk.LEFT)
+
+        title_label = ttk.Label(header, text=title)
+        title_label.pack(side=tk.LEFT, padx=(6, 0))
+
+        child.pack(fill=tk.X, pady=2)
+        self._sections.append((header, child, is_expanded))
 
 class ArchimediusGUI:
     """GUI for the Archimedius application."""
@@ -66,6 +105,7 @@ class ArchimediusGUI:
         self.auto_preview_enabled = defaults.DEFAULT_SETTINGS["auto_preview_enabled"]
         self.logging_level = defaults.DEFAULT_SETTINGS["logging_level"]
         self.dark_mode = defaults.DEFAULT_SETTINGS["dark_mode"]
+        self.style = Style()
         
         # Create variables for extension filters
         self.extension_vars = {"audio": {}, "video": {}, "image": {}, "ebook": {}}
@@ -97,30 +137,12 @@ class ArchimediusGUI:
         logger.info("Archimedius started")
 
     def apply_theme(self, dark_mode):
-        """Apply TKinterModernThemes Sun-Valley theme."""
+        """Apply ttkbootstrap theme based on dark mode."""
         self.dark_mode = bool(dark_mode)
-        mode = "dark" if self.dark_mode else "light"
-        theme_name = "sun-valley"
-        theme_file = (
-            Path(TKMT.__file__).resolve().parent
-            / "themes"
-            / theme_name
-            / f"{theme_name}.tcl"
-        )
+        theme_name = "darkly" if self.dark_mode else "flatly"
 
         try:
-            if theme_file.exists():
-                try:
-                    self.root.tk.call("source", str(theme_file))
-                except tk.TclError:
-                    # The theme may already be loaded for this interpreter session.
-                    pass
-                self.root.tk.call("set_theme", mode)
-            else:
-                logger.warning(
-                    "Sun-Valley theme file not found at %s; falling back to default ttk theme.",
-                    theme_file,
-                )
+            self.style.theme_use(theme_name)
 
             # tk.Menu is not a ttk widget; keep it consistently light.
             menu_colors = {
@@ -268,13 +290,17 @@ class ArchimediusGUI:
         output_button = ttk.Button(self.output_frame, text="Browse...", command=self._browse_output)
         output_button.pack(side=tk.RIGHT)
         
-        # Extension filters
-        extensions_frame = ttk.LabelFrame(top_frame, text="File Type Filters", padding=5)
-        extensions_frame.pack(fill=tk.X, pady=2)
+        # Extension filters (ttkbootstrap collapsing frame)
+        self.file_type_filters = CollapsingFrame(top_frame)
+        self.file_type_filters.pack(fill=tk.X, pady=2)
         
         # Create a frame for each file type category
-        self.file_types_frame = ttk.Frame(extensions_frame)
-        self.file_types_frame.pack(fill=tk.X, pady=2)
+        self.file_types_frame = ttk.Frame(self.file_type_filters, padding=5)
+        self.file_type_filters.add(
+            child=self.file_types_frame,
+            title="File Type Filters",
+            bootstyle="secondary",
+        )
         
         # Audio extensions
         audio_frame = ttk.LabelFrame(self.file_types_frame, text="Audio")
