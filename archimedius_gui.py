@@ -12,6 +12,7 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
 import json
+import TKinterModernThemes as TKMT
 
 # Import application modules
 import extensions
@@ -64,6 +65,7 @@ class ArchimediusGUI:
         self.auto_save_enabled = defaults.DEFAULT_SETTINGS["auto_save_enabled"]
         self.auto_preview_enabled = defaults.DEFAULT_SETTINGS["auto_preview_enabled"]
         self.logging_level = defaults.DEFAULT_SETTINGS["logging_level"]
+        self.dark_mode = defaults.DEFAULT_SETTINGS["dark_mode"]
         
         # Create variables for extension filters
         self.extension_vars = {"audio": {}, "video": {}, "image": {}, "ebook": {}}
@@ -80,6 +82,7 @@ class ArchimediusGUI:
         
         # Create the widgets
         self._create_widgets()
+        self.apply_theme(self.dark_mode)
         
         # Create log window
         self.log_window = LogWindow(self.root, logger)
@@ -93,37 +96,90 @@ class ArchimediusGUI:
         # Log startup
         logger.info("Archimedius started")
 
+    def apply_theme(self, dark_mode):
+        """Apply TKinterModernThemes Sun-Valley theme."""
+        self.dark_mode = bool(dark_mode)
+        mode = "dark" if self.dark_mode else "light"
+        theme_name = "sun-valley"
+        theme_file = (
+            Path(TKMT.__file__).resolve().parent
+            / "themes"
+            / theme_name
+            / f"{theme_name}.tcl"
+        )
+
+        try:
+            if theme_file.exists():
+                try:
+                    self.root.tk.call("source", str(theme_file))
+                except tk.TclError:
+                    # The theme may already be loaded for this interpreter session.
+                    pass
+                self.root.tk.call("set_theme", mode)
+            else:
+                logger.warning(
+                    "Sun-Valley theme file not found at %s; falling back to default ttk theme.",
+                    theme_file,
+                )
+
+            # tk.Menu is not a ttk widget; keep it consistently light.
+            menu_colors = {
+                "bg": "#f5f5f5",
+                "fg": "#1a1a1a",
+                "active_bg": "#e6e6e6",
+                "active_fg": "#111111",
+            }
+
+            if hasattr(self, "menubar"):
+                self.menubar.configure(
+                    background=menu_colors["bg"],
+                    foreground=menu_colors["fg"],
+                    activebackground=menu_colors["active_bg"],
+                    activeforeground=menu_colors["active_fg"],
+                    borderwidth=0,
+                )
+                for menu in [self.file_menu, self.tools_menu, self.help_menu]:
+                    menu.configure(
+                        background=menu_colors["bg"],
+                        foreground=menu_colors["fg"],
+                        activebackground=menu_colors["active_bg"],
+                        activeforeground=menu_colors["active_fg"],
+                        borderwidth=0,
+                    )
+        except Exception as e:
+            logger.warning("Failed to apply Sun-Valley theme: %s", e)
+
     def _create_menu(self):
         """Create the application menu."""
-        menubar = tk.Menu(self.root)
-        self.root.config(menu=menubar)
+        self.menubar = tk.Menu(self.root)
+        self.root.config(menu=self.menubar)
         
         # File menu
-        file_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="File", menu=file_menu)
-        file_menu.add_command(label="Open Source Directory...", command=self._browse_source)
-        file_menu.add_command(label="Open Output Directory...", command=self._browse_output)
-        file_menu.add_separator()
-        file_menu.add_command(label="Save Settings", command=self._save_settings_manual)
-        file_menu.add_command(label="Reset Settings", command=self._reset_settings)
-        file_menu.add_separator()
-        file_menu.add_command(label="Exit", command=self._on_close)
+        self.file_menu = tk.Menu(self.menubar, tearoff=0)
+        self.menubar.add_cascade(label="File", menu=self.file_menu)
+        self.file_menu.add_command(label="Open Source Directory...", command=self._browse_source)
+        self.file_menu.add_command(label="Open Output Directory...", command=self._browse_output)
+        self.file_menu.add_separator()
+        self.file_menu.add_command(label="Save Settings", command=self._save_settings_manual)
+        self.file_menu.add_command(label="Reset Settings", command=self._reset_settings)
+        self.file_menu.add_separator()
+        self.file_menu.add_command(label="Exit", command=self._on_close)
         
         # Tools menu
-        tools_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="Tools", menu=tools_menu)
-        tools_menu.add_command(label="Preferences", command=self._show_preferences)
-        tools_menu.add_command(label="View Logs", command=self._toggle_logs)
+        self.tools_menu = tk.Menu(self.menubar, tearoff=0)
+        self.menubar.add_cascade(label="Tools", menu=self.tools_menu)
+        self.tools_menu.add_command(label="Preferences", command=self._show_preferences)
+        self.tools_menu.add_command(label="View Logs", command=self._toggle_logs)
         
         # Help menu
-        help_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="Help", menu=help_menu)
-        help_menu.add_command(label="Help Contents", command=self._show_help)
-        help_menu.add_command(label="Placeholders Help", command=self._show_placeholders_help)
-        help_menu.add_separator()
-        help_menu.add_command(label="License Activation", command=self._show_license_activation)
-        help_menu.add_separator()
-        help_menu.add_command(label="About", command=self._show_about)
+        self.help_menu = tk.Menu(self.menubar, tearoff=0)
+        self.menubar.add_cascade(label="Help", menu=self.help_menu)
+        self.help_menu.add_command(label="Help Contents", command=self._show_help)
+        self.help_menu.add_command(label="Placeholders Help", command=self._show_placeholders_help)
+        self.help_menu.add_separator()
+        self.help_menu.add_command(label="License Activation", command=self._show_license_activation)
+        self.help_menu.add_separator()
+        self.help_menu.add_command(label="About", command=self._show_about)
 
     def _create_widgets(self):
         """Create the GUI widgets."""
@@ -1379,6 +1435,7 @@ class ArchimediusGUI:
                 "auto_save_enabled": getattr(self, "auto_save_enabled", True),
                 "auto_preview_enabled": getattr(self, "auto_preview_enabled", True),
                 "logging_level": getattr(self, "logging_level", defaults.DEFAULT_SETTINGS["logging_level"]),
+                "dark_mode": getattr(self, "dark_mode", defaults.DEFAULT_SETTINGS["dark_mode"]),
                 "operation_mode": getattr(self, "operation_mode", "copy"),
             }
             
@@ -1471,6 +1528,8 @@ class ArchimediusGUI:
 
                 # Load logging level setting
                 self.logging_level = settings.get("logging_level", defaults.DEFAULT_SETTINGS["logging_level"])
+                self.dark_mode = settings.get("dark_mode", defaults.DEFAULT_SETTINGS["dark_mode"])
+                self.apply_theme(self.dark_mode)
                 
                 logger.info(f"Settings loaded from {self.config_file}")
                 
@@ -1509,6 +1568,8 @@ class ArchimediusGUI:
                 self.auto_save_enabled = defaults.DEFAULT_SETTINGS["auto_save_enabled"]
                 self.auto_preview_enabled = defaults.DEFAULT_SETTINGS["auto_preview_enabled"]
                 self.logging_level = defaults.DEFAULT_SETTINGS["logging_level"]
+                self.dark_mode = defaults.DEFAULT_SETTINGS["dark_mode"]
+                self.apply_theme(self.dark_mode)
                 
                 # Clear preview
                 self._clear_preview()

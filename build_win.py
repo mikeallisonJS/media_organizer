@@ -44,6 +44,7 @@ def build_executable():
         "--windowed",
         "--icon=resources/archimedius.ico",
         "--add-data", "MediaInfo.exe;.",
+        "--collect-data", "TKinterModernThemes",
         "main.py"
     ]
     

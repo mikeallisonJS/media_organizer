@@ -41,6 +41,7 @@ DEFAULT_SETTINGS = {
     "auto_save_enabled": True,
     "auto_preview_enabled": True,
     "logging_level": "INFO",
+    "dark_mode": False,
     "exclude_unknown": DEFAULT_EXCLUDE_UNKNOWN,
 }
 

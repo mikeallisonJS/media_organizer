@@ -84,6 +84,17 @@ class PreferencesDialog:
             variable=self.show_full_paths_var
         )
         full_paths_cb.pack(anchor=tk.W, pady=5)
+
+        # Dark mode option
+        self.dark_mode_var = tk.BooleanVar(
+            value=getattr(self.app, "dark_mode", defaults.DEFAULT_SETTINGS["dark_mode"])
+        )
+        dark_mode_cb = ttk.Checkbutton(
+            self.general_frame,
+            text="Enable dark mode",
+            variable=self.dark_mode_var
+        )
+        dark_mode_cb.pack(anchor=tk.W, pady=5)
         
         # Add a separator
         ttk.Separator(self.general_frame, orient="horizontal").pack(fill=tk.X, pady=10)
@@ -109,11 +120,12 @@ class PreferencesDialog:
         logging_combobox.pack(side=tk.LEFT)
         
         # Add help text
+        help_color = "#a8a8a8" if getattr(self.app, "dark_mode", False) else "gray"
         ttk.Label(
             logging_frame, 
             text="(Changes will take effect after restart)",
             font=("TkDefaultFont", 8),
-            foreground="gray"
+            foreground=help_color
         ).pack(side=tk.LEFT, padx=10)
         
         # Create File Types tab
@@ -144,6 +156,13 @@ class PreferencesDialog:
             text_frame.pack(fill=tk.BOTH, expand=True)
             
             text_widget = tk.Text(text_frame, height=10, width=40)
+            if getattr(self.app, "dark_mode", False):
+                text_widget.configure(
+                    bg="#2b2b2b",
+                    fg="#e6e6e6",
+                    insertbackground="#e6e6e6",
+                    relief=tk.FLAT,
+                )
             scrollbar = ttk.Scrollbar(text_frame, orient="vertical", command=text_widget.yview)
             text_widget.configure(yscrollcommand=scrollbar.set)
             
@@ -193,6 +212,8 @@ class PreferencesDialog:
         self.app.auto_save_enabled = self.auto_save_var.get()
         self.app.show_full_paths = self.show_full_paths_var.get()
         self.app.logging_level = self.logging_level_var.get()
+        self.app.dark_mode = self.dark_mode_var.get()
+        self.app.apply_theme(self.app.dark_mode)
         
         # Update extensions
         new_extensions = {}
