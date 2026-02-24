@@ -726,8 +726,14 @@ class ArchimediusGUI:
                     # Convert to absolute paths for comparison
                     abs_source = source_path.resolve()
                     abs_output = output_path.resolve()
-                    # Check if output is a subdirectory of source
-                    is_dest_in_source = str(abs_output).startswith(str(abs_source))
+                    # Check if output is a true subdirectory of source (not the same directory)
+                    is_dest_in_source = False
+                    if abs_output != abs_source:
+                        try:
+                            abs_output.relative_to(abs_source)
+                            is_dest_in_source = True
+                        except ValueError:
+                            is_dest_in_source = False
                     if is_dest_in_source:
                         logger.info(f"Destination directory is inside source directory. Will skip files in destination for preview.")
                 except Exception as e:
@@ -1221,8 +1227,14 @@ class ArchimediusGUI:
                 # Convert to absolute paths for comparison
                 abs_source = source_path.resolve()
                 abs_output = output_path.resolve()
-                # Check if output is a subdirectory of source
-                is_dest_in_source = str(abs_output).startswith(str(abs_source))
+                # Check if output is a true subdirectory of source (not the same directory)
+                is_dest_in_source = False
+                if abs_output != abs_source:
+                    try:
+                        abs_output.relative_to(abs_source)
+                        is_dest_in_source = True
+                    except ValueError:
+                        is_dest_in_source = False
                 if is_dest_in_source:
                     logger.info(f"Destination directory is inside source directory. Will skip files in destination.")
             except Exception as e:

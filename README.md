@@ -69,6 +69,7 @@ If you prefer to run from source:
 1. Make sure you have Python 3 installed
 2. Install MediaInfo for enhanced video metadata extraction (optional but recommended):
    - Download and install from [MediaInfo website](https://mediaarea.net/en/MediaInfo/Download/Windows)
+   - `run.bat` can also download a local development copy to `tools/mediainfo` if `mediainfo` is not in `PATH`
 3. Clone or download this repository
 4. Install Python dependencies:
    ```bash
