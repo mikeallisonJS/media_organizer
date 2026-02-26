@@ -31,45 +31,6 @@ logger = logging.getLogger("Archimedius")
 # Initialize SUPPORTED_EXTENSIONS from the defaults module
 SUPPORTED_EXTENSIONS = defaults.get_default_extensions()
 
-class CollapsingFrame(ttk.Frame):
-    """Simple collapsing frame compatible with ttkbootstrap widgets."""
-
-    def __init__(self, master=None, **kwargs):
-        super().__init__(master, **kwargs)
-        self._sections = []
-
-    def add(self, child, title="Section", bootstyle="secondary"):
-        """Add a collapsible child section."""
-        header = ttk.Frame(self)
-        header.pack(fill=tk.X, pady=(0, 2))
-
-        is_expanded = tk.BooleanVar(value=True)
-        icon_var = tk.StringVar(value="▾")
-
-        def toggle():
-            if is_expanded.get():
-                child.pack_forget()
-                is_expanded.set(False)
-                icon_var.set("▸")
-            else:
-                child.pack(fill=tk.X, pady=2)
-                is_expanded.set(True)
-                icon_var.set("▾")
-
-        toggle_button = ttk.Button(
-            header,
-            textvariable=icon_var,
-            width=2,
-            command=toggle,
-        )
-        toggle_button.pack(side=tk.LEFT)
-
-        title_label = ttk.Label(header, text=title)
-        title_label.pack(side=tk.LEFT, padx=(6, 0))
-
-        child.pack(fill=tk.X, pady=2)
-        self._sections.append((header, child, is_expanded))
-
 class ArchimediusGUI:
     """GUI for the Archimedius application."""
     
@@ -262,9 +223,9 @@ class ArchimediusGUI:
         )
         self.stop_button.pack(side=tk.LEFT, padx=5)
         
-        # Top section frame - fixed height
+        # Top section frame - directories + tabbed content
         top_frame = ttk.Frame(self.main_frame)
-        top_frame.pack(fill=tk.X, pady=2, side=tk.TOP)
+        top_frame.pack(fill=tk.BOTH, expand=True, pady=2, side=tk.TOP)
         
         # Create a frame to hold both directory selection frames
         directories_frame = ttk.Frame(top_frame)
@@ -290,17 +251,22 @@ class ArchimediusGUI:
         output_button = ttk.Button(self.output_frame, text="Browse...", command=self._browse_output)
         output_button.pack(side=tk.RIGHT)
         
-        # Extension filters (ttkbootstrap collapsing frame)
-        self.file_type_filters = CollapsingFrame(top_frame)
-        self.file_type_filters.pack(fill=tk.X, pady=2)
-        
+        # Tabbed content area for filters/templates/preview
+        content_tabs = ttk.Notebook(top_frame)
+        content_tabs.pack(fill=tk.BOTH, expand=True, pady=2)
+
+        file_types_tab = ttk.Frame(content_tabs, padding=5)
+        templates_tab = ttk.Frame(content_tabs, padding=5)
+        preview_tab = ttk.Frame(content_tabs, padding=5)
+
+        content_tabs.add(preview_tab, text="Preview")
+        content_tabs.add(templates_tab, text="Organization Templates")
+        content_tabs.add(file_types_tab, text="File Type Filters")
+        content_tabs.select(preview_tab)
+
         # Create a frame for each file type category
-        self.file_types_frame = ttk.Frame(self.file_type_filters, padding=5)
-        self.file_type_filters.add(
-            child=self.file_types_frame,
-            title="File Type Filters",
-            bootstyle="secondary",
-        )
+        self.file_types_frame = ttk.Frame(file_types_tab)
+        self.file_types_frame.pack(fill=tk.X, pady=2)
         
         # Audio extensions
         audio_frame = ttk.LabelFrame(self.file_types_frame, text="Audio")
@@ -423,8 +389,8 @@ class ArchimediusGUI:
             cb.grid(row=i // 2, column=i % 2, sticky=tk.W, padx=5)
         
         # Template configuration
-        template_frame = ttk.LabelFrame(top_frame, text="Organization Templates", padding=5)
-        template_frame.pack(fill=tk.X, pady=2)
+        template_frame = ttk.LabelFrame(templates_tab, text="Organization Templates", padding=5)
+        template_frame.pack(fill=tk.BOTH, expand=True, pady=2)
         
         template_header_frame = ttk.Frame(template_frame)
         template_header_frame.pack(fill=tk.X, pady=2)
@@ -566,13 +532,9 @@ class ArchimediusGUI:
         # For backward compatibility
         self.template_var = self.template_vars["audio"]
 
-        # Middle section - expandable preview
-        middle_frame = ttk.Frame(self.main_frame)
-        middle_frame.pack(fill=tk.BOTH, expand=True, pady=2, side=tk.TOP)
-        
-        # Preview frame
+        # Preview tab content
         preview_frame = ttk.LabelFrame(
-            middle_frame, text="Preview", padding=5
+            preview_tab, text="Preview", padding=5
         )
         preview_frame.pack(fill=tk.BOTH, expand=True, pady=2)
 
@@ -741,6 +703,12 @@ class ArchimediusGUI:
                 else:
                     display_file = current_file
                 self.file_var.set(f"Current: {display_file}")
+        elif current_file == "Complete":
+            self.progress_var.set(0)
+            self.status_var.set("No matching files found.")
+            self.file_var.set("")
+            if not hasattr(self, "processing_selected_files") or not self.processing_selected_files:
+                self._organization_complete()
     
     def _generate_preview(self):
         """Generate a preview of the organization."""
@@ -890,14 +858,20 @@ class ArchimediusGUI:
                     # Get source path for display
                     if getattr(self, "show_full_paths", False):
                         display_source = str(file_path)
-                        display_dest = str(self.organizer.output_dir / rel_path)
+                        if self.organizer.output_dir:
+                            display_dest = str(self.organizer.output_dir / rel_path)
+                        else:
+                            display_dest = rel_path
                     else:
                         try:
                             display_source = str(file_path.relative_to(source_path))
                             display_dest = rel_path
                         except ValueError:
                             display_source = str(file_path)
-                            display_dest = str(self.organizer.output_dir / rel_path)
+                            if self.organizer.output_dir:
+                                display_dest = str(self.organizer.output_dir / rel_path)
+                            else:
+                                display_dest = rel_path
                     
                     # Add to preview data with the full file path
                     preview_data.append((display_source, display_dest, str(file_path)))
@@ -1215,7 +1189,10 @@ class ArchimediusGUI:
     def _create_tooltip(self, widget, text):
         """Create a tooltip for a widget."""
         def enter(_):
-            x, y, _, _ = widget.bbox("insert")
+            try:
+                x, y, _, _ = widget.bbox("insert")
+            except Exception:
+                x, y = 0, 0
             x += widget.winfo_rootx() + 25
             y += widget.winfo_rooty() + 25
             
@@ -1223,10 +1200,31 @@ class ArchimediusGUI:
             self.tooltip = tk.Toplevel(widget)
             self.tooltip.wm_overrideredirect(True)
             self.tooltip.wm_geometry(f"+{x}+{y}")
-            
-            label = ttk.Label(self.tooltip, text=text, justify=tk.LEFT,
-                             background="#ffffe0", relief=tk.SOLID, borderwidth=1,
-                             wraplength=250)
+
+            # Tooltips use tk widgets so colors stay readable in both themes.
+            if self.dark_mode:
+                tooltip_bg = "#2b2b2b"
+                tooltip_fg = "#e6e6e6"
+                tooltip_border = "#4a4a4a"
+            else:
+                tooltip_bg = "#fff8d6"
+                tooltip_fg = "#1a1a1a"
+                tooltip_border = "#c7c7c7"
+
+            label = tk.Label(
+                self.tooltip,
+                text=text,
+                justify=tk.LEFT,
+                bg=tooltip_bg,
+                fg=tooltip_fg,
+                relief=tk.SOLID,
+                borderwidth=1,
+                highlightthickness=1,
+                highlightbackground=tooltip_border,
+                padx=6,
+                pady=4,
+                wraplength=250,
+            )
             label.pack(padx=3, pady=3)
             
         def leave(_):
@@ -1309,6 +1307,10 @@ class ArchimediusGUI:
 
     def _run_organization_with_filters(self, selected_extensions):
         """Run the organization process with the selected file extensions."""
+        self.organizer.stop_requested = False
+        self.organizer.is_running = True
+        self.organizer.files_processed = 0
+
         # Update UI
         self.copy_button.config(state=tk.DISABLED)
         self.move_button.config(state=tk.DISABLED)
@@ -1424,16 +1426,26 @@ class ArchimediusGUI:
                     
                     # Update progress
                     processed += 1
-                    self._update_progress(processed, total_files, str(file_path))
+                    self.root.after(
+                        0, lambda p=processed, t=total_files, f=str(file_path): self._update_progress(p, t, f)
+                    )
             
             # Complete
-            self._update_progress(processed, total_files, "Complete")
+            self.organizer.files_processed = processed
+            self.root.after(0, lambda p=processed, t=total_files: self._update_progress(p, t, "Complete"))
             operation_name = "copy" if self.organizer.operation_mode == "copy" else "move"
             logger.info(f"{operation_name.capitalize()} operation complete. Processed {processed} files.")
             
         except Exception as e:
             logger.error(f"Error during organization: {e}")
-            messagebox.showerror("Error", f"An error occurred during organization: {str(e)}")
+            self.root.after(
+                0,
+                lambda msg=str(e): messagebox.showerror(
+                    "Error", f"An error occurred during organization: {msg}"
+                ),
+            )
+        finally:
+            self.organizer.is_running = False
     
     def _stop_organization(self):
         """Stop the organization process."""
@@ -1491,6 +1503,7 @@ class ArchimediusGUI:
                 "auto_preview_enabled": getattr(self, "auto_preview_enabled", True),
                 "logging_level": getattr(self, "logging_level", defaults.DEFAULT_SETTINGS["logging_level"]),
                 "dark_mode": getattr(self, "dark_mode", defaults.DEFAULT_SETTINGS["dark_mode"]),
+                "window_geometry": self.root.geometry(),
                 "operation_mode": getattr(self, "operation_mode", "copy"),
             }
             
@@ -1510,6 +1523,12 @@ class ArchimediusGUI:
                     settings = json.load(f)
                 
                 # Apply settings
+                if "window_geometry" in settings and settings["window_geometry"]:
+                    try:
+                        self.root.geometry(settings["window_geometry"])
+                    except Exception as e:
+                        logger.warning(f"Could not restore saved window size: {e}")
+
                 if "source_dir" in settings and settings["source_dir"]:
                     self.source_entry.delete(0, tk.END)
                     self.source_entry.insert(0, settings["source_dir"])
@@ -1759,6 +1778,9 @@ class ArchimediusGUI:
         self.organizer.set_source_dir(source_dir)
         self.organizer.set_output_dir(output_dir)
         self.organizer.set_operation_mode(mode)
+        self.organizer.stop_requested = False
+        self.organizer.is_running = True
+        self.organizer.files_processed = 0
         
         # Set flag to indicate we're processing selected files
         self.processing_selected_files = True
@@ -1851,6 +1873,7 @@ class ArchimediusGUI:
             error_msg = str(e) if str(e) else "Unknown error"
             self.root.after(0, lambda msg=error_msg: messagebox.showerror("Error", f"An error occurred during processing: {msg}"))
         finally:
+            self.organizer.is_running = False
             # Update UI
             self.root.after(0, lambda: self._update_ui_for_processing(False))
             

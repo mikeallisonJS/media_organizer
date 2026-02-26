@@ -68,7 +68,8 @@ class MediaFile:
                 self._extract_ebook_metadata()
             
             # Add file information
-            self.metadata["filename"] = self.file_path.name
+            self.metadata["filename"] = self.file_path.stem
+            self.metadata["filename_with_extension"] = self.file_path.name
             self.metadata["extension"] = self.file_path.suffix.lower()[1:]  # Remove the dot
             self.metadata["size"] = self.file_path.stat().st_size
 
@@ -397,8 +398,8 @@ class MediaFile:
             
             # If exclude_unknown is True, remove "Unknown" folders from the path
             if exclude_unknown:
-                # Split the path into components
-                path_parts = formatted_path.split(os.sep)
+                # Split on both separator styles so templates using "/" also work on Windows.
+                path_parts = re.split(r"[\\/]+", formatted_path)
                 # Filter out "Unknown" parts
                 path_parts = [part for part in path_parts if part != "Unknown"]
                 # Rejoin the path
@@ -414,10 +415,18 @@ class MediaFile:
                     formatted_path = formatted_path.replace(".{extension}", f".{self.metadata['extension']}")
                 else:
                     # Add the full filename with extension
-                    formatted_path = os.path.join(formatted_path, f"{self.metadata['filename']}")
+                    formatted_path = os.path.join(
+                        formatted_path, f"{self.metadata['filename_with_extension']}"
+                    )
             elif "{filename}" in template and "{extension}" not in template:
                 # If filename is included but extension isn't, add the extension
-                formatted_path = formatted_path.replace("{filename}", f"{self.metadata['filename']}")
+                base_dir = os.path.dirname(formatted_path)
+                base_name = os.path.basename(formatted_path)
+                extension = self.metadata["extension"]
+                expected_suffix = f".{extension.lower()}"
+                if not base_name.lower().endswith(expected_suffix):
+                    base_name = f"{base_name}.{extension}"
+                    formatted_path = os.path.join(base_dir, base_name) if base_dir else base_name
             
             # Clean up any double slashes or other path issues
             formatted_path = os.path.normpath(formatted_path)
@@ -427,4 +436,4 @@ class MediaFile:
         except Exception as e:
             logger.error(f"Error formatting path: {e}")
             # Fallback to a safe default
-            return os.path.join(self.file_type, self.metadata["filename"]) 
+            return os.path.join(self.file_type, self.metadata["filename_with_extension"])
