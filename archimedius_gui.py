@@ -390,8 +390,8 @@ class ArchimediusGUI:
             )
             cb.grid(row=i // 2, column=i % 2, sticky=tk.W, padx=5)
         
-        # Template configuration
-        template_frame = ttk.LabelFrame(templates_tab, text="Organization Templates", padding=5)
+        # Template configuration (no extra section wrapper)
+        template_frame = ttk.Frame(templates_tab, padding=5)
         template_frame.pack(fill=tk.BOTH, expand=True, pady=2)
         
         template_header_frame = ttk.Frame(template_frame)
@@ -534,10 +534,8 @@ class ArchimediusGUI:
         # For backward compatibility
         self.template_var = self.template_vars["audio"]
 
-        # Preview tab content
-        preview_frame = ttk.LabelFrame(
-            preview_tab, text="Preview", padding=5
-        )
+        # Preview tab content (no extra wrapper)
+        preview_frame = ttk.Frame(preview_tab, padding=5)
         preview_frame.pack(fill=tk.BOTH, expand=True, pady=2)
 
         # Add a button frame at the top of the preview
