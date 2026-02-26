@@ -689,6 +689,7 @@ class ArchimediusGUI:
             general_tab,
             text="Enable dark mode",
             variable=self.pref_dark_mode_var,
+            command=self._on_inline_dark_mode_toggle,
         ).pack(anchor=tk.W, pady=4)
 
         logging_row = ttk.Frame(general_tab)
@@ -788,6 +789,33 @@ class ArchimediusGUI:
         except Exception as e:
             logger.error(f"Error saving inline preferences: {e}")
             messagebox.showerror("Error", f"Failed to save preferences: {str(e)}")
+
+    def _on_inline_dark_mode_toggle(self):
+        """Apply dark mode immediately from inline preferences."""
+        self.dark_mode = self.pref_dark_mode_var.get()
+        self.apply_theme(self.dark_mode)
+
+    def _sync_inline_preferences_controls(self):
+        """Sync inline preference controls with current in-memory settings."""
+        if hasattr(self, "pref_auto_preview_var"):
+            self.pref_auto_preview_var.set(self.auto_preview_enabled)
+        if hasattr(self, "pref_auto_save_var"):
+            self.pref_auto_save_var.set(self.auto_save_enabled)
+        if hasattr(self, "pref_show_full_paths_var"):
+            self.pref_show_full_paths_var.set(self.show_full_paths)
+        if hasattr(self, "pref_dark_mode_var"):
+            self.pref_dark_mode_var.set(self.dark_mode)
+        if hasattr(self, "pref_logging_level_var"):
+            self.pref_logging_level_var.set(self.logging_level)
+
+        if hasattr(self, "pref_extension_texts"):
+            for media_type, text_widget in self.pref_extension_texts.items():
+                if media_type in SUPPORTED_EXTENSIONS:
+                    text_widget.delete("1.0", tk.END)
+                    text_widget.insert(
+                        "1.0",
+                        "\n".join(ext.lstrip(".") for ext in SUPPORTED_EXTENSIONS[media_type]),
+                    )
 
     def _browse_source(self):
         """Browse for source directory."""
@@ -1743,6 +1771,7 @@ class ArchimediusGUI:
                 self.logging_level = settings.get("logging_level", defaults.DEFAULT_SETTINGS["logging_level"])
                 self.dark_mode = settings.get("dark_mode", defaults.DEFAULT_SETTINGS["dark_mode"])
                 self.apply_theme(self.dark_mode)
+                self._sync_inline_preferences_controls()
                 
                 logger.info(f"Settings loaded from {self.config_file}")
                 
@@ -1783,6 +1812,7 @@ class ArchimediusGUI:
                 self.logging_level = defaults.DEFAULT_SETTINGS["logging_level"]
                 self.dark_mode = defaults.DEFAULT_SETTINGS["dark_mode"]
                 self.apply_theme(self.dark_mode)
+                self._sync_inline_preferences_controls()
                 
                 # Clear preview
                 self._clear_preview()
