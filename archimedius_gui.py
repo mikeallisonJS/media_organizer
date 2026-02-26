@@ -151,7 +151,6 @@ class ArchimediusGUI:
         # Tools menu
         self.tools_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="Tools", menu=self.tools_menu)
-        self.tools_menu.add_command(label="Preferences", command=self._show_preferences)
         self.tools_menu.add_command(label="View Logs", command=self._toggle_logs)
         
         # Help menu
@@ -258,11 +257,14 @@ class ArchimediusGUI:
         file_types_tab = ttk.Frame(content_tabs, padding=5)
         templates_tab = ttk.Frame(content_tabs, padding=5)
         preview_tab = ttk.Frame(content_tabs, padding=5)
+        preferences_tab = ttk.Frame(content_tabs, padding=10)
 
         content_tabs.add(preview_tab, text="Preview")
         content_tabs.add(templates_tab, text="Organization Templates")
         content_tabs.add(file_types_tab, text="File Type Filters")
+        content_tabs.add(preferences_tab, text="Preferences")
         content_tabs.select(preview_tab)
+        self._create_preferences_tab(preferences_tab)
 
         # Create a frame for each file type category
         self.file_types_frame = ttk.Frame(file_types_tab)
@@ -649,6 +651,145 @@ class ArchimediusGUI:
         
         # Create the preferences dialog with the callback
         PreferencesDialog(self.root, self, SUPPORTED_EXTENSIONS, callback=on_save)
+
+    def _create_preferences_tab(self, parent):
+        """Create inline preferences controls in the Preferences tab."""
+        preferences_frame = ttk.Frame(parent)
+        preferences_frame.pack(fill=tk.BOTH, expand=True)
+
+        prefs_notebook = ttk.Notebook(preferences_frame)
+        prefs_notebook.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+
+        general_tab = ttk.Frame(prefs_notebook, padding=10)
+        file_types_tab = ttk.Frame(prefs_notebook, padding=10)
+        prefs_notebook.add(general_tab, text="General")
+        prefs_notebook.add(file_types_tab, text="File Types")
+
+        # General settings
+        self.pref_auto_preview_var = tk.BooleanVar(value=self.auto_preview_enabled)
+        self.pref_auto_save_var = tk.BooleanVar(value=self.auto_save_enabled)
+        self.pref_show_full_paths_var = tk.BooleanVar(value=self.show_full_paths)
+        self.pref_dark_mode_var = tk.BooleanVar(value=self.dark_mode)
+        self.pref_logging_level_var = tk.StringVar(value=self.logging_level)
+
+        ttk.Checkbutton(
+            general_tab,
+            text="Automatically generate preview when settings change",
+            variable=self.pref_auto_preview_var,
+        ).pack(anchor=tk.W, pady=4)
+        ttk.Checkbutton(
+            general_tab,
+            text="Automatically save settings when inputs change",
+            variable=self.pref_auto_save_var,
+        ).pack(anchor=tk.W, pady=4)
+        ttk.Checkbutton(
+            general_tab,
+            text="Show full file paths in preview",
+            variable=self.pref_show_full_paths_var,
+        ).pack(anchor=tk.W, pady=4)
+        ttk.Checkbutton(
+            general_tab,
+            text="Enable dark mode",
+            variable=self.pref_dark_mode_var,
+        ).pack(anchor=tk.W, pady=4)
+
+        logging_row = ttk.Frame(general_tab)
+        logging_row.pack(fill=tk.X, pady=(10, 0))
+        ttk.Label(logging_row, text="Logging Level:").pack(side=tk.LEFT, padx=(0, 10))
+        ttk.Combobox(
+            logging_row,
+            textvariable=self.pref_logging_level_var,
+            values=list(defaults.LOGGING_LEVELS.keys()),
+            state="readonly",
+            width=10,
+        ).pack(side=tk.LEFT)
+
+        # File type extension settings
+        self.pref_extension_texts = {}
+        filetype_notebook = ttk.Notebook(file_types_tab)
+        filetype_notebook.pack(fill=tk.BOTH, expand=True)
+
+        for media_type in ["audio", "video", "image", "ebook"]:
+            frame = ttk.Frame(filetype_notebook, padding=10)
+            filetype_notebook.add(frame, text=media_type.title())
+            ttk.Label(
+                frame,
+                text=f"Extensions for {media_type} files (one per line):",
+                wraplength=500,
+            ).pack(anchor=tk.W, pady=(0, 5))
+
+            text_frame = ttk.Frame(frame)
+            text_frame.pack(fill=tk.BOTH, expand=True)
+            text_widget = tk.Text(text_frame, height=10)
+            scrollbar = ttk.Scrollbar(text_frame, orient="vertical", command=text_widget.yview)
+            text_widget.configure(yscrollcommand=scrollbar.set)
+            text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            text_widget.insert(
+                "1.0",
+                "\n".join(ext.lstrip(".") for ext in SUPPORTED_EXTENSIONS[media_type]),
+            )
+            self.pref_extension_texts[media_type] = text_widget
+
+            ttk.Button(
+                frame,
+                text="Reset to Default",
+                command=lambda m=media_type: self._reset_inline_extensions_to_default(m),
+            ).pack(anchor=tk.E, pady=5)
+
+        # Action buttons
+        buttons_frame = ttk.Frame(preferences_frame)
+        buttons_frame.pack(fill=tk.X)
+        ttk.Button(
+            buttons_frame,
+            text="Save Preferences",
+            command=self._save_inline_preferences,
+        ).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(
+            buttons_frame,
+            text="Reload From Saved Settings",
+            command=self._load_settings,
+        ).pack(side=tk.RIGHT, padx=5)
+
+    def _reset_inline_extensions_to_default(self, media_type):
+        """Reset inline extension editor for one media type."""
+        default_extensions = [ext.lstrip(".") for ext in defaults.get_default_extensions()[media_type]]
+        if media_type in getattr(self, "pref_extension_texts", {}):
+            self.pref_extension_texts[media_type].delete("1.0", tk.END)
+            self.pref_extension_texts[media_type].insert("1.0", "\n".join(default_extensions))
+
+    def _save_inline_preferences(self):
+        """Save inline preferences tab settings."""
+        try:
+            self.auto_preview_enabled = self.pref_auto_preview_var.get()
+            self.auto_save_enabled = self.pref_auto_save_var.get()
+            self.show_full_paths = self.pref_show_full_paths_var.get()
+            self.logging_level = self.pref_logging_level_var.get()
+            self.dark_mode = self.pref_dark_mode_var.get()
+            self.apply_theme(self.dark_mode)
+
+            new_extensions = {}
+            for media_type, text_widget in self.pref_extension_texts.items():
+                extensions_text = text_widget.get("1.0", "end-1c").split("\n")
+                extensions_list = [ext.strip() for ext in extensions_text if ext.strip()]
+                extensions_list = [ext if ext.startswith(".") else f".{ext}" for ext in extensions_list]
+                if not extensions_list:
+                    messagebox.showerror(
+                        "Error",
+                        f"Please provide at least one extension for {media_type}.",
+                    )
+                    return
+                new_extensions[media_type] = extensions_list
+
+            global SUPPORTED_EXTENSIONS
+            SUPPORTED_EXTENSIONS = new_extensions
+            self._refresh_extension_filters()
+            self._save_settings()
+            self._auto_generate_preview()
+            self.status_var.set("Preferences saved.")
+        except Exception as e:
+            logger.error(f"Error saving inline preferences: {e}")
+            messagebox.showerror("Error", f"Failed to save preferences: {str(e)}")
 
     def _browse_source(self):
         """Browse for source directory."""
