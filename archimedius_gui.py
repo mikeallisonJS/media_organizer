@@ -71,6 +71,10 @@ class ArchimediusGUI:
         # Create variables for extension filters
         self.extension_vars = {"audio": {}, "video": {}, "image": {}, "ebook": {}}
         
+        # Stored preview data for client-side re-filtering when extensions change
+        self._full_preview_data = []
+        self._full_preview_count = 0
+        
         # Config file path
         self.config_file = Path.home() / defaults.DEFAULT_PATHS["settings_file"]
         
@@ -870,9 +874,11 @@ class ArchimediusGUI:
             self._auto_generate_preview()
             
     def _clear_preview(self):
-        """Clear the preview list."""
+        """Clear the preview list and stored preview data."""
         for item in self.preview_tree.get_children():
             self.preview_tree.delete(item)
+        self._full_preview_data = []
+        self._full_preview_count = 0
     
     def _update_progress(self, processed, total, current_file):
         """Update the progress display."""
@@ -1083,6 +1089,14 @@ class ArchimediusGUI:
 
     def _update_preview_results(self, preview_data, count):
         """Update the preview treeview with results from the preview thread."""
+        # Store full preview data for client-side re-filtering
+        self._full_preview_data = list(preview_data)
+        self._full_preview_count = count
+        
+        self._display_preview_data(preview_data, count)
+
+    def _display_preview_data(self, preview_data, count):
+        """Populate the preview treeview with the given data and update status."""
         # Clear existing items
         for item in self.preview_tree.get_children():
             self.preview_tree.delete(item)
@@ -1092,10 +1106,8 @@ class ArchimediusGUI:
         
         # Insert preview data into treeview
         for i, (display_source, display_dest, full_path) in enumerate(preview_data):
-            # Use a checkbox for selection (initially unchecked)
             item_id = self.preview_tree.insert("", "end", values=("☐", display_source, display_dest))
             
-            # Store the full file path for later processing
             self.preview_files[item_id] = {
                 "source_path": display_source,
                 "dest_path": display_dest,
@@ -1108,12 +1120,9 @@ class ArchimediusGUI:
             self.status_var.set("No media files found in the source directory.")
             self.file_var.set("")
         else:
-            # Count files by media type
             media_types = {}
             for display_source, _, full_path in preview_data:
-                # Get file extension
                 ext = os.path.splitext(full_path)[1].lower()
-                # Determine media type
                 media_type = None
                 for type_name, extensions in SUPPORTED_EXTENSIONS.items():
                     if ext in extensions:
@@ -1123,10 +1132,21 @@ class ArchimediusGUI:
                 if media_type:
                     media_types[media_type] = media_types.get(media_type, 0) + 1
             
-            # Create detailed message
             type_counts = ", ".join([f"{count} {media_type}" for media_type, count in media_types.items()])
-            self.status_var.set(f"Preview generated for {count} files.")
+            self.status_var.set(f"Preview generated for {len(preview_data)} files.")
             self.file_var.set(f"Found: {type_counts}")
+
+    def _filter_preview(self):
+        """Re-filter stored preview data by currently selected extensions and refresh the tree."""
+        if not self._full_preview_data:
+            return
+        
+        selected_extensions = self._get_selected_extensions()
+        filtered = [
+            (src, dest, path) for src, dest, path in self._full_preview_data
+            if os.path.splitext(path)[1].lower() in selected_extensions
+        ]
+        self._display_preview_data(filtered, len(filtered))
     
     def _update_preview_status(self, message, error=False):
         """Update the preview status with a message."""
@@ -1153,8 +1173,8 @@ class ArchimediusGUI:
         # Auto-save settings if enabled
         if getattr(self, "auto_save_enabled", True):
             self._save_settings()
-        # Auto-generate preview
-        self._auto_generate_preview()
+        # Immediately re-filter existing preview data
+        self._filter_preview()
     
     def _update_extension_selection(self):
         """Update the 'All' checkboxes based on individual selections."""
@@ -1164,8 +1184,8 @@ class ArchimediusGUI:
         # Auto-save settings if enabled
         if getattr(self, "auto_save_enabled", True):
             self._save_settings()
-        # Auto-generate preview
-        self._auto_generate_preview()
+        # Immediately re-filter existing preview data
+        self._filter_preview()
     
     def _get_selected_extensions(self):
         """Get a list of all selected file extensions."""

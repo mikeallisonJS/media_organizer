@@ -21,6 +21,7 @@ var/
 *.egg
 
 # Virtual environments
+archimedius_venv/
 venv/
 ENV/
 .env
