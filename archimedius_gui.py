@@ -100,7 +100,7 @@ class ArchimediusGUI:
     def apply_theme(self, dark_mode):
         """Apply ttkbootstrap theme based on dark mode."""
         self.dark_mode = bool(dark_mode)
-        theme_name = "darkly" if self.dark_mode else "flatly"
+        theme_name = "darkly" if self.dark_mode else "litera"
 
         try:
             self.style.theme_use(theme_name)
@@ -674,16 +674,19 @@ class ArchimediusGUI:
             general_tab,
             text="Automatically generate preview when settings change",
             variable=self.pref_auto_preview_var,
+            command=self._on_inline_general_preferences_change,
         ).pack(anchor=tk.W, pady=4)
         ttk.Checkbutton(
             general_tab,
             text="Automatically save settings when inputs change",
             variable=self.pref_auto_save_var,
+            command=self._on_inline_general_preferences_change,
         ).pack(anchor=tk.W, pady=4)
         ttk.Checkbutton(
             general_tab,
             text="Show full file paths in preview",
             variable=self.pref_show_full_paths_var,
+            command=self._on_inline_general_preferences_change,
         ).pack(anchor=tk.W, pady=4)
         ttk.Checkbutton(
             general_tab,
@@ -695,13 +698,18 @@ class ArchimediusGUI:
         logging_row = ttk.Frame(general_tab)
         logging_row.pack(fill=tk.X, pady=(10, 0))
         ttk.Label(logging_row, text="Logging Level:").pack(side=tk.LEFT, padx=(0, 10))
-        ttk.Combobox(
+        logging_combobox = ttk.Combobox(
             logging_row,
             textvariable=self.pref_logging_level_var,
             values=list(defaults.LOGGING_LEVELS.keys()),
             state="readonly",
             width=10,
-        ).pack(side=tk.LEFT)
+        )
+        logging_combobox.pack(side=tk.LEFT)
+        logging_combobox.bind(
+            "<<ComboboxSelected>>",
+            lambda _event: self._on_inline_general_preferences_change(),
+        )
 
         # File type extension settings
         self.pref_extension_texts = {}
@@ -792,8 +800,24 @@ class ArchimediusGUI:
 
     def _on_inline_dark_mode_toggle(self):
         """Apply dark mode immediately from inline preferences."""
+        self._on_inline_general_preferences_change()
+
+    def _on_inline_general_preferences_change(self):
+        """Apply general preference changes immediately and persist them."""
+        previous_show_full_paths = self.show_full_paths
+        self.auto_preview_enabled = self.pref_auto_preview_var.get()
+        self.auto_save_enabled = self.pref_auto_save_var.get()
+        self.show_full_paths = self.pref_show_full_paths_var.get()
+        self.logging_level = self.pref_logging_level_var.get()
         self.dark_mode = self.pref_dark_mode_var.get()
         self.apply_theme(self.dark_mode)
+        self._save_settings()
+
+        # Refresh preview display immediately when path display mode changes.
+        if previous_show_full_paths != self.show_full_paths:
+            source_dir = self.source_entry.get().strip()
+            if source_dir and os.path.exists(source_dir):
+                self._generate_preview()
 
     def _sync_inline_preferences_controls(self):
         """Sync inline preference controls with current in-memory settings."""

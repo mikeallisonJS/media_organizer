@@ -174,6 +174,28 @@ This project uses [Black](https://black.readthedocs.io/) for code formatting and
    python -m black --check .
    ```
 
+### Testing
+
+Tests are stored in the `tests/` directory and can be run from the repository root.
+
+1. Install the test runner (if not already installed):
+
+   ```bash
+   pip install pytest
+   ```
+
+2. Run all tests:
+
+   ```bash
+   python -m pytest tests -v
+   ```
+
+3. Run a single test module:
+
+   ```bash
+   python -m pytest tests/test_imports.py -v
+   ```
+
 ### VSCode Setup
 
 This project includes VSCode configuration for automatic formatting with Black:
