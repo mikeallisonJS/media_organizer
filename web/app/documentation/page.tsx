@@ -562,7 +562,7 @@ export default function DocumentationPage() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground">
-                      Your settings are automatically saved, but you can manually save them using Settings > Save
+                      Your settings are automatically saved, but you can manually save them using Settings &gt; Save
                       Settings if you've made changes you want to keep.
                     </p>
                   </CardContent>
@@ -577,7 +577,7 @@ export default function DocumentationPage() {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-muted-foreground">
-                      If something doesn't work as expected, check the logs (View > Show Logs) for more detailed
+                      If something doesn't work as expected, check the logs (View &gt; Show Logs) for more detailed
                       information about what happened.
                     </p>
                   </CardContent>
@@ -680,7 +680,7 @@ export default function DocumentationPage() {
                   <CardContent>
                     <p className="text-sm text-muted-foreground">
                       If the application appears to freeze during organization, it may be processing a large file. Check
-                      the logs (View > Show Logs) for more information.
+                      the logs (View &gt; Show Logs) for more information.
                     </p>
                   </CardContent>
                 </Card>

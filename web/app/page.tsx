@@ -1,6 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
+import logo from "./logo.png";
+import screenshot from "./screenshot.png";
 import {
   ArrowRight,
   BookOpen,
@@ -19,7 +21,7 @@ export default function LandingPage() {
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
             <Image
-              src="/logo.png"
+              src={logo}
               alt="Archimedius Logo"
               width={32}
               height={32}
@@ -88,7 +90,7 @@ export default function LandingPage() {
               </div>
               <div className="flex items-center justify-center">
                 <Image
-                  src="/screenshot.png"
+                  src={screenshot}
                   width={500}
                   height={400}
                   alt="Archimedius Application Screenshot"
@@ -245,7 +247,7 @@ export default function LandingPage() {
               </div>
               <div className="flex justify-center">
                 <Image
-                  src="/screenshot.png"
+                  src={screenshot}
                   width={800}
                   height={640}
                   alt="Archimedius Application Interface"
@@ -307,7 +309,7 @@ export default function LandingPage() {
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <Image
-                  src="/logo.png"
+                  src={logo}
                   alt="Archimedius Logo"
                   width={24}
                   height={24}
