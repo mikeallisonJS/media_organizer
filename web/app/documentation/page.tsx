@@ -764,7 +764,7 @@ export default function DocumentationPage() {
               <span className="text-xl font-bold">Archimedius</span>
             </div>
             <p className="text-sm text-muted-foreground mt-4 md:mt-0">
-              &copy; {new Date().getFullYear()} Archimedius. All rights reserved.
+              &copy; {new Date().getFullYear()} Archimedius. MIT Licensed.
             </p>
           </div>
         </div>
