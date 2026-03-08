@@ -4,9 +4,9 @@ This document lists all dependencies used by the Archimedius application along w
 
 ## License Compatibility Notice
 
-Archimedius is proprietary software licensed only to the original purchaser. When using third-party libraries, we ensure compliance with their license terms by selecting components with permissive licenses that allow inclusion in proprietary software.
+Archimedius is distributed under the MIT License. Third-party dependencies are selected with compatible permissive licenses and must retain their own notices where required.
 
-All dependencies used in this application are under permissive licenses (MIT, BSD, Apache) which generally allow inclusion in proprietary software with proper attribution.
+All dependencies used in this application are under permissive licenses (MIT, BSD, Apache, HPND), which are generally compatible with MIT-licensed projects when attribution requirements are preserved.
 
 Please consult with a legal professional if you have questions about license compliance.
 

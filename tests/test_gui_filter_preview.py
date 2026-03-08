@@ -9,7 +9,7 @@ tree without requiring a full re-analysis.
 import os
 import sys
 import tkinter as tk
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
@@ -29,12 +29,10 @@ def tk_root():
 @pytest.fixture()
 def gui(tk_root):
     """Create a fresh ArchimediusGUI instance for each test."""
-    with patch("archimedius_gui.LicenseManager") as MockLM:
-        MockLM.return_value.is_valid.return_value = True
-        with patch("archimedius_gui.ArchimediusGUI._load_settings"):
-            from archimedius_gui import ArchimediusGUI
+    with patch("archimedius_gui.ArchimediusGUI._load_settings"):
+        from archimedius_gui import ArchimediusGUI
 
-            app = ArchimediusGUI(tk_root)
+        app = ArchimediusGUI(tk_root)
 
     yield app
 

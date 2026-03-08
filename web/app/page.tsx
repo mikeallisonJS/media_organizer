@@ -444,8 +444,7 @@ export default function LandingPage() {
           </div>
           <div className="mt-8 border-t pt-8 flex flex-col md:flex-row justify-between items-center">
             <p className="text-xs text-muted-foreground">
-              &copy; {new Date().getFullYear()} Archimedius. All rights
-              reserved.
+              &copy; {new Date().getFullYear()} Archimedius. MIT Licensed.
             </p>
             <p className="text-xs text-muted-foreground mt-4 md:mt-0">
               Built with Python and Tkinter. Logo design by Archimedius Team.

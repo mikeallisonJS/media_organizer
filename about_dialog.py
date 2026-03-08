@@ -81,7 +81,7 @@ class AboutDialog:
         # Copyright
         copyright_label = ttk.Label(
             content_frame, 
-            text="© 2025 All Rights Reserved",
+            text="© 2025 Mike Allison - MIT License",
             font=("TkDefaultFont", 9)
         )
         copyright_label.pack(pady=(0, 10))

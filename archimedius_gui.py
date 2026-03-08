@@ -23,7 +23,6 @@ from media_file import MediaFile
 from archimedius import Archimedius
 from about_dialog import AboutDialog
 from help_dialog import HelpDialog
-from license_manager import LicenseManager
 
 # Configure logging
 logger = logging.getLogger("Archimedius")
@@ -40,22 +39,6 @@ class ArchimediusGUI:
         self.root.title(defaults.APP_NAME)
         self.root.geometry(defaults.DEFAULT_WINDOW_SIZES["main_window"])  # Increase default height
         self.root.minsize(800, 800)    # Ensure minimum size
-        
-        # Initialize license manager
-        self.license_manager = LicenseManager()
-        
-        # Check license status
-        if not self.license_manager.is_valid():
-            # Show activation dialog if not licensed or in trial mode
-            self.license_manager.show_activation_dialog(self.root)
-            # If still not valid after dialog, exit
-            if not self.license_manager.is_valid():
-                messagebox.showerror(
-                    "License Required",
-                    f"{defaults.APP_NAME} requires a valid license or active trial to run."
-                )
-                self.root.destroy()
-                return
         
         # Initialize the media organizer
         self.organizer = Archimedius()
@@ -163,8 +146,6 @@ class ArchimediusGUI:
         self.help_menu.add_command(label="Help Contents", command=self._show_help)
         self.help_menu.add_command(label="Placeholders Help", command=self._show_placeholders_help)
         self.help_menu.add_separator()
-        self.help_menu.add_command(label="License Activation", command=self._show_license_activation)
-        self.help_menu.add_separator()
         self.help_menu.add_command(label="About", command=self._show_about)
 
     def _create_widgets(self):
@@ -196,8 +177,7 @@ class ArchimediusGUI:
         status_frame.pack(fill=tk.X, side=tk.BOTTOM, pady=2)
         
         self.status_var = tk.StringVar()
-        status_message = self.license_manager.get_status_message()
-        self.status_var.set(f"License: {status_message}")
+        self.status_var.set("Ready")
         
         status_label = ttk.Label(status_frame, textvariable=self.status_var, anchor=tk.W)
         status_label.pack(side=tk.LEFT, padx=5)
@@ -1894,14 +1874,6 @@ class ArchimediusGUI:
     def _show_help(self):
         """Show the Help dialog."""
         HelpDialog(self.root)
-
-    def _show_license_activation(self):
-        """Show the license activation dialog."""
-        self.license_manager.show_activation_dialog(self.root)
-        
-        # Update status bar with license status
-        status_message = self.license_manager.get_status_message()
-        self.status_var.set(f"License: {status_message}")
 
     def _toggle_selection(self, event):
         """Toggle selection of a file in the preview treeview when clicked."""

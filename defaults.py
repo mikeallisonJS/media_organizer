@@ -67,8 +67,6 @@ DEFAULT_WINDOW_SIZES = {
 DEFAULT_PATHS = {
     "settings_file": "archimedius_settings.json",
     "log_file": "archimedius.log",
-    "license_file": "archimedius_license.json",
-    "trial_file": "archimedius_trial.json",
 }
 
 # Function to get all default extensions
