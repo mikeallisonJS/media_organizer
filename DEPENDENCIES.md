@@ -6,7 +6,7 @@ This document lists all dependencies used by the Archimedius application along w
 
 Archimedius is distributed under the MIT License. Third-party dependencies are selected with compatible permissive licenses and must retain their own notices where required.
 
-All dependencies used in this application are under permissive licenses (MIT, BSD, Apache, HPND), which are generally compatible with MIT-licensed projects when attribution requirements are preserved.
+Third-party dependencies used in this application are under permissive licenses (MIT, BSD, Apache, HPND), which are generally compatible with MIT-licensed projects when attribution requirements are preserved.
 
 Please consult with a legal professional if you have questions about license compliance.
 
