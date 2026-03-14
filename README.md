@@ -11,10 +11,6 @@ A cross-platform application to organize media files based on their metadata.
 - Cross-platform compatibility using Python's standard libraries
 - Detailed logging of operations
 
-## Purchasing
-
-Archimedius is proprietary software available for purchase. For pricing information, licensing details, and how to buy, please see the [PURCHASING.md](PURCHASING.md) file.
-
 ## Supported File Types
 
 - **Audio**: MP3, FLAC, M4A, AAC, OGG, WAV
@@ -208,4 +204,4 @@ This project includes VSCode configuration for automatic formatting with Black:
 
 ## License
 
-This software is proprietary and is licensed only to the original purchaser. See the [LICENSE](LICENSE) file for the complete terms and conditions.
+This project is licensed under the [MIT License](LICENSE).
