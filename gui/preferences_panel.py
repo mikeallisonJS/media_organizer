@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 import defaults
 from gui.media_type_config import MEDIA_TYPE_TAB_LABELS
-from settings import MEDIA_TYPES, _normalize_collision_policy
+from settings import MEDIA_TYPES
 
 if TYPE_CHECKING:
     from archimedius_gui import ArchimediusGUI
@@ -166,34 +166,40 @@ class PreferencesPanel:
             ).pack(anchor=tk.E, pady=5)
 
     def read_settings(self, settings: Settings) -> None:
-        """Read the preferences slice into *settings*.
+        """Read the preferences slice into *settings* from the panel controls.
 
-        General preferences are read from the application's committed attributes
-        (kept in sync by :meth:`apply_general_preferences`); the supported
-        extension lists come from the in-memory model (committed on Save).
+        The general-preference controls (toggles, logging level, collision
+        policy) are the source of truth and are read directly from their
+        widgets. The supported extension lists come from the in-memory model
+        rather than the editable text boxes, because those are validated and
+        committed only on Save.
         """
-        app = self.app
-        settings.supported_extensions = copy.deepcopy(app.settings.supported_extensions)
-        settings.show_full_paths = getattr(
-            app, "show_full_paths", defaults.DEFAULT_SETTINGS["show_full_paths"]
-        )
-        settings.auto_save_enabled = getattr(
-            app, "auto_save_enabled", defaults.DEFAULT_SETTINGS["auto_save_enabled"]
-        )
-        settings.auto_preview_enabled = getattr(
-            app, "auto_preview_enabled", defaults.DEFAULT_SETTINGS["auto_preview_enabled"]
-        )
-        settings.logging_level = getattr(
-            app, "logging_level", defaults.DEFAULT_SETTINGS["logging_level"]
-        )
-        settings.dark_mode = getattr(app, "dark_mode", defaults.DEFAULT_SETTINGS["dark_mode"])
-        settings.collision_policy = _normalize_collision_policy(
-            getattr(app, "collision_policy", defaults.DEFAULT_SETTINGS["collision_policy"])
+        settings.supported_extensions = copy.deepcopy(self.app.settings.supported_extensions)
+        settings.show_full_paths = self.pref_show_full_paths_var.get()
+        settings.auto_save_enabled = self.pref_auto_save_var.get()
+        settings.auto_preview_enabled = self.pref_auto_preview_var.get()
+        settings.logging_level = self.pref_logging_level_var.get()
+        settings.dark_mode = self.pref_dark_mode_var.get()
+        settings.collision_policy = self._collision_policy_from_label(
+            self.pref_collision_policy_var.get()
         )
 
     def apply_settings(self, settings: Settings) -> None:
-        """Sync the preference controls from the application's committed state."""
-        self.sync_controls()
+        """Apply the preferences slice of *settings* to the panel controls."""
+        self.pref_auto_preview_var.set(settings.auto_preview_enabled)
+        self.pref_auto_save_var.set(settings.auto_save_enabled)
+        self.pref_show_full_paths_var.set(settings.show_full_paths)
+        self.pref_dark_mode_var.set(settings.dark_mode)
+        self.pref_logging_level_var.set(settings.logging_level)
+        self.pref_collision_policy_var.set(
+            defaults.COLLISION_POLICY_LABELS.get(
+                settings.collision_policy,
+                defaults.COLLISION_POLICY_LABELS[
+                    defaults.DEFAULT_SETTINGS["collision_policy"]
+                ],
+            )
+        )
+        self._sync_extension_texts(settings.supported_extensions)
 
     def reset_extensions_to_default(self, media_type: str) -> None:
         default_extensions = [
@@ -258,29 +264,15 @@ class PreferencesPanel:
             self.pref_collision_policy_var.get()
         )
 
-    def sync_controls(self) -> None:
-        self.pref_auto_preview_var.set(self.app.auto_preview_enabled)
-        self.pref_auto_save_var.set(self.app.auto_save_enabled)
-        self.pref_show_full_paths_var.set(self.app.show_full_paths)
-        self.pref_dark_mode_var.set(self.app.dark_mode)
-        self.pref_logging_level_var.set(self.app.logging_level)
-        self.pref_collision_policy_var.set(
-            defaults.COLLISION_POLICY_LABELS.get(
-                self.app.collision_policy,
-                defaults.COLLISION_POLICY_LABELS[
-                    defaults.DEFAULT_SETTINGS["collision_policy"]
-                ],
-            )
-        )
-
+    def _sync_extension_texts(self, supported_extensions: dict[str, list[str]]) -> None:
+        """Refresh the editable extension text boxes from *supported_extensions*."""
         for media_type, text_widget in self.pref_extension_texts.items():
-            if media_type in self.app.settings.supported_extensions:
+            if media_type in supported_extensions:
                 text_widget.delete("1.0", tk.END)
                 text_widget.insert(
                     "1.0",
                     "\n".join(
-                        ext.lstrip(".")
-                        for ext in self.app.settings.supported_extensions[media_type]
+                        ext.lstrip(".") for ext in supported_extensions[media_type]
                     ),
                 )
 

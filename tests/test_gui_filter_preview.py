@@ -8,23 +8,12 @@ tree without requiring a full re-analysis.
 
 import os
 import sys
-from unittest.mock import patch
-
-import pytest
 
 # Ensure project root is on sys.path so imports resolve
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 
-@pytest.fixture()
-def gui(tk_root):
-    """Create a fresh ArchimediusGUI instance for each test."""
-    with patch("archimedius_gui.ArchimediusGUI._load_settings"):
-        from archimedius_gui import ArchimediusGUI
-
-        app = ArchimediusGUI(tk_root)
-
-    yield app
+# The ``gui`` fixture is provided by tests/conftest.py.
 
 
 # ── sample preview data covering multiple media types ──────────────────

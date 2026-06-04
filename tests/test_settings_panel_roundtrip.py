@@ -10,9 +10,6 @@ introspection: ``collect_settings_from_gui`` delegates to each panel's
 
 import os
 import sys
-from unittest.mock import patch
-
-import pytest
 
 # Ensure project root is on sys.path so imports resolve
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -44,13 +41,7 @@ PANEL_FIELDS = (
 )
 
 
-@pytest.fixture()
-def gui(tk_root):
-    with patch("archimedius_gui.ArchimediusGUI._load_settings"):
-        from archimedius_gui import ArchimediusGUI
-
-        app = ArchimediusGUI(tk_root)
-    yield app
+# The ``gui`` fixture is provided by tests/conftest.py.
 
 
 def _custom_settings() -> Settings:
@@ -117,6 +108,28 @@ def test_panel_round_trip_matches_file_round_trip(gui, tmp_path):
 
     for field in PANEL_FIELDS:
         assert getattr(loaded, field) == getattr(original, field), field
+
+
+def test_preferences_apply_settings_consumes_argument(gui):
+    """PreferencesPanel.apply_settings must push the passed Settings into the
+    controls, not silently read from the app shell."""
+    panel = gui.preferences_panel
+    target = _custom_settings()
+
+    # Make the committed app state deliberately disagree with *target* so a
+    # regression to "ignore the argument and read from app" would be caught.
+    gui.dark_mode = not target.dark_mode
+    gui.show_full_paths = not target.show_full_paths
+    gui.collision_policy = "skip"
+    gui.logging_level = "ERROR"
+
+    panel.apply_settings(target)
+
+    collected = Settings()
+    panel.read_settings(collected)
+
+    for field in ("dark_mode", "show_full_paths", "collision_policy", "logging_level"):
+        assert getattr(collected, field) == getattr(target, field), field
 
 
 def test_collect_does_not_depend_on_mirrored_widget_refs(gui):

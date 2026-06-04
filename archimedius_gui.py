@@ -1054,7 +1054,7 @@ class ArchimediusGUI:
                 self.settings.supported_extensions = copy.deepcopy(defaults.DEFAULT_EXTENSIONS)
                 self._refresh_extension_filters()
                 self.apply_theme(self.dark_mode)
-                self._sync_inline_preferences_controls()
+                self.preferences_panel.apply_settings(self.settings)
                 
                 # Clear preview
                 self._clear_preview()
@@ -1281,11 +1281,6 @@ class ArchimediusGUI:
             self.template_panel.set_enabled(True)
             self.preview_panel.set_processing_state(False)
             self.processing_selected_files = False
-
-    def _sync_inline_preferences_controls(self):
-        """Sync inline preference controls with current in-memory settings."""
-        if hasattr(self, "preferences_panel"):
-            self.preferences_panel.sync_controls()
 
     def _refresh_extension_filters(self):
         """Refresh the extension filter checkboxes based on current supported extensions."""

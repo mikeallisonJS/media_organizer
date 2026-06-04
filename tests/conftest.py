@@ -28,6 +28,36 @@ def tk_root():
     root.destroy()
 
 
+@pytest.fixture()
+def gui(tk_root):
+    """A fresh ArchimediusGUI on the shared session root, isolated per test.
+
+    Because the Tk root lives for the whole session, each test's widget tree
+    and any pending ``after`` debounce timers would otherwise pile up on it.
+    Teardown cancels the known debounce timers and destroys the widgets so the
+    next test starts from a clean root.
+    """
+    import tkinter as tk
+    from unittest.mock import patch
+
+    with patch("archimedius_gui.ArchimediusGUI._load_settings"):
+        from archimedius_gui import ArchimediusGUI
+
+        app = ArchimediusGUI(tk_root)
+    try:
+        yield app
+    finally:
+        for timer_attr in ("_preview_timer", "_template_timer"):
+            timer = getattr(app, timer_attr, None)
+            if timer is not None:
+                try:
+                    tk_root.after_cancel(timer)
+                except tk.TclError:
+                    pass
+        for child in tk_root.winfo_children():
+            child.destroy()
+
+
 def write_minimal_epub(epub_path: Path) -> None:
     """Write a minimal valid EPUB zip for metadata extraction tests."""
     container_xml = """<?xml version="1.0"?>
