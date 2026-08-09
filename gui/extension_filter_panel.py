@@ -11,6 +11,7 @@ from settings import MEDIA_TYPES
 
 if TYPE_CHECKING:
     from archimedius_gui import ArchimediusGUI
+    from settings import Settings
 
 
 class ExtensionFilterPanel:
@@ -121,13 +122,20 @@ class ExtensionFilterPanel:
                     selected.append(ext)
         return selected
 
-    def bind_to_app(self) -> None:
-        """Expose panel state on the main window for settings and tests."""
-        app = self.app
-        app.extension_vars = self.extension_vars
-        app.file_types_frame = self.file_types_frame
-        for media_type in MEDIA_TYPES:
-            setattr(app, f"{media_type}_all_var", self.all_vars[media_type])
+    def get_extension_selections(self) -> dict[str, dict[str, bool]]:
+        """Return per-media-type extension selection flags."""
+        return {
+            file_type: {ext: var.get() for ext, var in self.extension_vars[file_type].items()}
+            for file_type in MEDIA_TYPES
+        }
+
+    def read_settings(self, settings: Settings) -> None:
+        """Read the extension selections into *settings*."""
+        settings.extension_selections = self.get_extension_selections()
+
+    def apply_settings(self, settings: Settings) -> None:
+        """Apply the extension-selection slice of *settings* to the checkboxes."""
+        self.apply_extension_selections(settings.extension_selections)
 
     def set_enabled(self, enabled: bool) -> None:
         """Enable or disable all filter controls."""

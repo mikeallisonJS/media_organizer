@@ -271,19 +271,15 @@ class ArchimediusGUI:
 
         self.extension_filter_panel = ExtensionFilterPanel(self)
         self.extension_filter_panel.build(file_types_tab)
-        self.extension_filter_panel.bind_to_app()
 
         self.template_panel = TemplatePanel(self)
         self.template_panel.build(templates_tab)
-        self.template_panel.bind_to_app()
 
         self.preview_panel = PreviewPanel(self)
         self.preview_panel.build(preview_tab)
-        self.preview_panel.bind_to_app()
 
         self.preferences_panel = PreferencesPanel(self)
         self.preferences_panel.build(preferences_tab)
-        self.preferences_panel.bind_to_app()
 
     def _toggle_logs(self):
         """Toggle the visibility of the log window."""
@@ -411,13 +407,8 @@ class ArchimediusGUI:
         output_dir = self.output_entry.get().strip()
 
         # Get templates for each media type
-        templates = {
-            "audio": self.template_vars["audio"].get().strip(),
-            "video": self.template_vars["video"].get().strip(),
-            "image": self.template_vars["image"].get().strip(),
-            "ebook": self.template_vars["ebook"].get().strip(),
-        }
-        
+        templates = self._get_template_settings()
+
         if not source_dir:
             messagebox.showerror("Error", "Please select a source directory.")
             return
@@ -829,13 +820,8 @@ class ArchimediusGUI:
         output_dir = self.output_entry.get().strip()
 
         # Get templates for each media type
-        templates = {
-            "audio": self.template_vars["audio"].get().strip(),
-            "video": self.template_vars["video"].get().strip(),
-            "image": self.template_vars["image"].get().strip(),
-            "ebook": self.template_vars["ebook"].get().strip(),
-        }
-        
+        templates = self._get_template_settings()
+
         if not source_dir or not output_dir:
             messagebox.showerror("Error", "Please select both source and output directories.")
             return
@@ -1031,13 +1017,12 @@ class ArchimediusGUI:
             self.output_entry.delete(0, tk.END)
             self.output_entry.insert(0, settings.output_dir)
 
-        self.template_panel.apply_templates(settings.templates)
+        self.template_panel.apply_settings(settings)
         self._refresh_extension_filters()
-        self.extension_filter_panel.apply_extension_selections(settings.extension_selections)
-        self.template_panel.apply_exclude_unknown(settings.exclude_unknown)
+        self.extension_filter_panel.apply_settings(settings)
 
         self.apply_theme(settings.dark_mode)
-        self._sync_inline_preferences_controls()
+        self.preferences_panel.apply_settings(settings)
 
     def _load_settings(self):
         """Load user settings from the configuration file."""
@@ -1069,7 +1054,7 @@ class ArchimediusGUI:
                 self.settings.supported_extensions = copy.deepcopy(defaults.DEFAULT_EXTENSIONS)
                 self._refresh_extension_filters()
                 self.apply_theme(self.dark_mode)
-                self._sync_inline_preferences_controls()
+                self.preferences_panel.apply_settings(self.settings)
                 
                 # Clear preview
                 self._clear_preview()
@@ -1144,7 +1129,7 @@ class ArchimediusGUI:
         # Get selected source paths from the preview
         selected_paths = [
             data["full_path"]
-            for data in self.preview_files.values()
+            for data in self.preview_panel.preview_files.values()
             if data["selected"]
         ]
 
@@ -1297,12 +1282,6 @@ class ArchimediusGUI:
             self.preview_panel.set_processing_state(False)
             self.processing_selected_files = False
 
-    def _sync_inline_preferences_controls(self):
-        """Sync inline preference controls with current in-memory settings."""
-        if hasattr(self, "preferences_panel"):
-            self.preferences_panel.sync_controls()
-
     def _refresh_extension_filters(self):
         """Refresh the extension filter checkboxes based on current supported extensions."""
         self.extension_filter_panel.refresh()
-        self.extension_filter_panel.bind_to_app() 

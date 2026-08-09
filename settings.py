@@ -223,43 +223,22 @@ def sync_gui_from_settings(gui: Any, settings: Settings) -> None:
 
 
 def collect_settings_from_gui(gui: Any) -> Settings:
-    """Build a Settings instance from the current GUI widget state."""
-    extension_selections = {
-        file_type: {ext: var.get() for ext, var in gui.extension_vars[file_type].items()}
-        for file_type in MEDIA_TYPES
-    }
-    exclude_unknown = {
-        media_type: gui.exclude_unknown_vars[media_type].get()
-        for media_type in MEDIA_TYPES
-    }
-    templates = {
-        media_type: gui.template_vars[media_type].get().strip()
-        for media_type in MEDIA_TYPES
-    }
-    return Settings(
+    """Build a Settings instance from the current GUI state.
+
+    Each panel reads its own slice of the settings via ``read_settings`` rather
+    than this function reaching into scattered widget references. The main
+    window only owns the directory entries and run/window state directly.
+    """
+    settings = Settings(
         source_dir=gui.source_entry.get().strip(),
         output_dir=gui.output_entry.get().strip(),
-        templates=templates,
-        supported_extensions=copy.deepcopy(gui.settings.supported_extensions),
-        extension_selections=extension_selections,
-        exclude_unknown=exclude_unknown,
         operation_mode=getattr(gui, "operation_mode", "copy"),
-        collision_policy=_normalize_collision_policy(
-            getattr(gui, "collision_policy", defaults.DEFAULT_SETTINGS["collision_policy"])
-        ),
-        show_full_paths=getattr(gui, "show_full_paths", defaults.DEFAULT_SETTINGS["show_full_paths"]),
-        auto_save_enabled=getattr(
-            gui, "auto_save_enabled", defaults.DEFAULT_SETTINGS["auto_save_enabled"]
-        ),
-        auto_preview_enabled=getattr(
-            gui, "auto_preview_enabled", defaults.DEFAULT_SETTINGS["auto_preview_enabled"]
-        ),
-        logging_level=getattr(
-            gui, "logging_level", defaults.DEFAULT_SETTINGS["logging_level"]
-        ),
-        dark_mode=getattr(gui, "dark_mode", defaults.DEFAULT_SETTINGS["dark_mode"]),
         window_geometry=gui.root.geometry(),
     )
+    gui.template_panel.read_settings(settings)
+    gui.extension_filter_panel.read_settings(settings)
+    gui.preferences_panel.read_settings(settings)
+    return settings
 
 
 def configure_logging(settings: Settings | None = None) -> None:

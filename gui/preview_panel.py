@@ -85,12 +85,6 @@ class PreviewPanel:
             xscrollcommand=scrollbar_x.set,
         )
 
-    def bind_to_app(self) -> None:
-        app = self.app
-        app.preview_tree = self.preview_tree
-        app.preview_button_frame = self.preview_button_frame
-        app.preview_files = self.preview_files
-
     def clear(self) -> None:
         assert self.preview_tree is not None
         for item in self.preview_tree.get_children():

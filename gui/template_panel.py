@@ -12,6 +12,7 @@ from settings import MEDIA_TYPES
 
 if TYPE_CHECKING:
     from archimedius_gui import ArchimediusGUI
+    from settings import Settings
 
 
 class TemplatePanel:
@@ -47,8 +48,6 @@ class TemplatePanel:
             notebook.add(tab, text=MEDIA_TYPE_TAB_LABELS[media_type])
             self._build_media_type_tab(tab, media_type)
 
-        self.app.template_var = self.template_vars["audio"]
-
     def _build_media_type_tab(self, parent: ttk.Frame, media_type: str) -> None:
         title = MEDIA_TYPE_TAB_LABELS[media_type]
         self.exclude_unknown_vars[media_type] = tk.BooleanVar(
@@ -80,12 +79,15 @@ class TemplatePanel:
             variable=self.exclude_unknown_vars[media_type],
         ).pack(anchor=tk.W, pady=(5, 0))
 
-    def bind_to_app(self) -> None:
-        app = self.app
-        app.template_vars = self.template_vars
-        app.template_entries = self.template_entries
-        app.exclude_unknown_vars = self.exclude_unknown_vars
-        app.template_var = self.template_vars["audio"]
+    def read_settings(self, settings: Settings) -> None:
+        """Read the template controls into *settings* (templates, exclude-unknown)."""
+        settings.templates = self.get_template_settings()
+        settings.exclude_unknown = self.get_exclude_unknown_settings()
+
+    def apply_settings(self, settings: Settings) -> None:
+        """Apply the template slice of *settings* to the controls."""
+        self.apply_templates(settings.templates)
+        self.apply_exclude_unknown(settings.exclude_unknown)
 
     def get_template_settings(self) -> dict[str, str]:
         return {
@@ -109,8 +111,6 @@ class TemplatePanel:
             template = templates.get(media_type)
             if template:
                 self.template_vars[media_type].set(template)
-        if templates.get("audio"):
-            self.app.template_var.set(templates["audio"])
 
     def apply_exclude_unknown(self, exclude_unknown: dict[str, bool]) -> None:
         for media_type in MEDIA_TYPES:
@@ -124,4 +124,3 @@ class TemplatePanel:
     def reset_to_defaults(self) -> None:
         for media_type in MEDIA_TYPES:
             self.template_vars[media_type].set(defaults.DEFAULT_TEMPLATES[media_type])
-        self.app.template_var.set(defaults.DEFAULT_TEMPLATES["audio"])

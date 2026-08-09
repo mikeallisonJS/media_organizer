@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import logging
 import tkinter as tk
 from tkinter import messagebox, ttk
@@ -13,6 +14,7 @@ from settings import MEDIA_TYPES
 
 if TYPE_CHECKING:
     from archimedius_gui import ArchimediusGUI
+    from settings import Settings
 
 logger = logging.getLogger("Archimedius")
 
@@ -163,15 +165,44 @@ class PreferencesPanel:
                 command=lambda mt=media_type: self.reset_extensions_to_default(mt),
             ).pack(anchor=tk.E, pady=5)
 
-    def bind_to_app(self) -> None:
-        app = self.app
-        app.pref_auto_preview_var = self.pref_auto_preview_var
-        app.pref_auto_save_var = self.pref_auto_save_var
-        app.pref_show_full_paths_var = self.pref_show_full_paths_var
-        app.pref_dark_mode_var = self.pref_dark_mode_var
-        app.pref_logging_level_var = self.pref_logging_level_var
-        app.pref_collision_policy_var = self.pref_collision_policy_var
-        app.pref_extension_texts = self.pref_extension_texts
+    def read_settings(self, settings: Settings) -> None:
+        """Read the preferences slice into *settings* from the panel controls.
+
+        The general-preference controls (toggles, logging level, collision
+        policy) are the source of truth and are read directly from their
+        widgets. The supported extension lists come from the in-memory model
+        rather than the editable text boxes, because those are validated and
+        committed only on Save.
+        """
+        settings.supported_extensions = copy.deepcopy(self.app.settings.supported_extensions)
+        settings.show_full_paths = self.pref_show_full_paths_var.get()
+        settings.auto_save_enabled = self.pref_auto_save_var.get()
+        settings.auto_preview_enabled = self.pref_auto_preview_var.get()
+        settings.logging_level = self.pref_logging_level_var.get()
+        settings.dark_mode = self.pref_dark_mode_var.get()
+        settings.collision_policy = self._collision_policy_from_label(
+            self.pref_collision_policy_var.get()
+        )
+
+    def apply_settings(self, settings: Settings) -> None:
+        """Apply the preferences slice of *settings* to the panel controls."""
+        self.pref_auto_preview_var.set(settings.auto_preview_enabled)
+        self.pref_auto_save_var.set(settings.auto_save_enabled)
+        self.pref_show_full_paths_var.set(settings.show_full_paths)
+        self.pref_dark_mode_var.set(settings.dark_mode)
+        self.pref_logging_level_var.set(settings.logging_level)
+        self.pref_collision_policy_var.set(
+            defaults.COLLISION_POLICY_LABELS.get(
+                settings.collision_policy,
+                defaults.COLLISION_POLICY_LABELS[
+                    defaults.DEFAULT_SETTINGS["collision_policy"]
+                ],
+            )
+        )
+        self.app.settings.supported_extensions = copy.deepcopy(
+            settings.supported_extensions
+        )
+        self._sync_extension_texts(settings.supported_extensions)
 
     def reset_extensions_to_default(self, media_type: str) -> None:
         default_extensions = [
@@ -236,29 +267,15 @@ class PreferencesPanel:
             self.pref_collision_policy_var.get()
         )
 
-    def sync_controls(self) -> None:
-        self.pref_auto_preview_var.set(self.app.auto_preview_enabled)
-        self.pref_auto_save_var.set(self.app.auto_save_enabled)
-        self.pref_show_full_paths_var.set(self.app.show_full_paths)
-        self.pref_dark_mode_var.set(self.app.dark_mode)
-        self.pref_logging_level_var.set(self.app.logging_level)
-        self.pref_collision_policy_var.set(
-            defaults.COLLISION_POLICY_LABELS.get(
-                self.app.collision_policy,
-                defaults.COLLISION_POLICY_LABELS[
-                    defaults.DEFAULT_SETTINGS["collision_policy"]
-                ],
-            )
-        )
-
+    def _sync_extension_texts(self, supported_extensions: dict[str, list[str]]) -> None:
+        """Refresh the editable extension text boxes from *supported_extensions*."""
         for media_type, text_widget in self.pref_extension_texts.items():
-            if media_type in self.app.settings.supported_extensions:
+            if media_type in supported_extensions:
                 text_widget.delete("1.0", tk.END)
                 text_widget.insert(
                     "1.0",
                     "\n".join(
-                        ext.lstrip(".")
-                        for ext in self.app.settings.supported_extensions[media_type]
+                        ext.lstrip(".") for ext in supported_extensions[media_type]
                     ),
                 )
 
