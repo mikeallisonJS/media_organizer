@@ -199,6 +199,9 @@ class PreferencesPanel:
                 ],
             )
         )
+        self.app.settings.supported_extensions = copy.deepcopy(
+            settings.supported_extensions
+        )
         self._sync_extension_texts(settings.supported_extensions)
 
     def reset_extensions_to_default(self, media_type: str) -> None:

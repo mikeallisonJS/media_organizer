@@ -47,8 +47,8 @@ PANEL_FIELDS = (
 def _custom_settings() -> Settings:
     """A Settings instance with non-default, internally consistent values."""
     return Settings(
-        source_dir="/data/in",
-        output_dir="/data/out",
+        source_dir=os.path.join("data", "in"),
+        output_dir=os.path.join("data", "out"),
         templates={
             "audio": "{year}/{artist}/{filename}",
             "video": "{creation_year}/{filename}",
@@ -122,13 +122,25 @@ def test_preferences_apply_settings_consumes_argument(gui):
     gui.show_full_paths = not target.show_full_paths
     gui.collision_policy = "skip"
     gui.logging_level = "ERROR"
+    gui.settings.supported_extensions = {
+        "audio": [".wav"],
+        "video": [".mkv"],
+        "image": [".png"],
+        "ebook": [".mobi"],
+    }
 
     panel.apply_settings(target)
 
     collected = Settings()
     panel.read_settings(collected)
 
-    for field in ("dark_mode", "show_full_paths", "collision_policy", "logging_level"):
+    for field in (
+        "dark_mode",
+        "show_full_paths",
+        "collision_policy",
+        "logging_level",
+        "supported_extensions",
+    ):
         assert getattr(collected, field) == getattr(target, field), field
 
 
