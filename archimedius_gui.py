@@ -28,9 +28,15 @@ from log_window import LogWindow
 from run_state import RunState
 from organize_plan import (
     CollisionAction,
-    build_plans_for_paths,
-    execute_plans,
     scan_source,
+)
+from organize_run import (
+    OrganizeRequest,
+    OrganizeRunError,
+    OrganizeRunNotice,
+    prepare_destination_root,
+    run_organize,
+    validate_request,
 )
 from about_dialog import AboutDialog
 from collision_dialog import CollisionPromptDialog
@@ -320,26 +326,11 @@ class ArchimediusGUI:
 
         return resolver
 
-    def _execute_plans_with_collision_policy(self, plans, output_path, operation_mode, on_each):
-        """Run execute_plans using the current collision policy and prompt resolver."""
-        collision_policy = getattr(
-            self,
-            "collision_policy",
-            defaults.DEFAULT_SETTINGS["collision_policy"],
-        )
-        collision_resolver = None
+    def _collision_resolver_for_policy(self, collision_policy):
+        """A prompt resolver when the policy asks, otherwise None."""
         if collision_policy == defaults.COLLISION_POLICY_PROMPT:
-            collision_resolver = self._create_collision_resolver()
-
-        return execute_plans(
-            plans,
-            output_path,
-            operation_mode=operation_mode,
-            collision_policy=collision_policy,
-            collision_resolver=collision_resolver,
-            should_stop=lambda: self.run_state.stop_requested,
-            on_each=on_each,
-        )
+            return self._create_collision_resolver()
+        return None
 
     def _browse_source(self):
         """Browse for source directory."""
@@ -383,9 +374,6 @@ class ArchimediusGUI:
             
             if current_file == "Complete":
                 self.file_var.set("Organization complete!")
-                # Only call _organization_complete for the main organization process, not for selected files
-                if not hasattr(self, 'processing_selected_files') or not self.processing_selected_files:
-                    self._organization_complete()
             else:
                 # Truncate long paths for display
                 if len(current_file) > 70:
@@ -397,8 +385,6 @@ class ArchimediusGUI:
             self.progress_var.set(0)
             self.status_var.set("No matching files found.")
             self.file_var.set("")
-            if not hasattr(self, "processing_selected_files") or not self.processing_selected_files:
-                self._organization_complete()
     
     def _generate_preview(self):
         """Generate a preview of the organization."""
@@ -814,161 +800,157 @@ class ArchimediusGUI:
         widget.bind("<Leave>", leave)
 
     def _start_organization(self, mode="copy"):
-        """Start the organization process with the specified mode (copy or move)."""
-        # Validate inputs
-        source_dir = self.source_entry.get().strip()
-        output_dir = self.output_entry.get().strip()
-
-        # Get templates for each media type
-        templates = self._get_template_settings()
-
-        if not source_dir or not output_dir:
-            messagebox.showerror("Error", "Please select both source and output directories.")
-            return
-        
-        if not all(templates.values()):
-            messagebox.showerror("Error", "Please provide templates for all media types.")
-            return
-        
-        if not os.path.exists(source_dir):
-            messagebox.showerror("Error", "Source directory does not exist.")
-            return
-        
-        # Confirm move operation
-        if mode == "move" and not messagebox.askyesno(
-            "Confirm Move Operation",
-            "Moving files will remove them from the source directory. Continue?",
-        ):
+        """Start an Organize run over a full source scan."""
+        request = self._prepare_organize_run(mode)
+        if request is None:
             return
 
-        # Create output directory if it doesn't exist
-        try:
-            os.makedirs(output_dir, exist_ok=True)
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to create output directory: {str(e)}")
-            return
-        
-        # Get selected extensions
-        selected_extensions = self._get_selected_extensions()
-        if not selected_extensions:
-            messagebox.showinfo(
-                "Info", "No file types selected. Please select at least one file type."
-            )
-            return
-        
         # Operation mode for this run (also persisted via settings below)
         self.operation_mode = mode
-
-        # Save settings
         self._save_settings()
+        self._log_organize_request(request)
 
-        # Log settings
-        logger.info(f"Source directory: {source_dir}")
-        logger.info(f"Output directory: {output_dir}")
-        logger.info(f"Operation mode: {mode}")
-        for media_type, template in templates.items():
+        self._begin_organize_run(request)
+
+    def _build_organize_request(self, mode, selected_paths=None):
+        """Build an OrganizeRequest from the current GUI state."""
+        return OrganizeRequest(
+            source_dir=self.source_entry.get().strip(),
+            destination_dir=self.output_entry.get().strip(),
+            operation_mode=mode,
+            templates=self._get_template_settings(),
+            supported_extensions=self.settings.supported_extensions,
+            selected_extensions=self._get_selected_extensions(),
+            exclude_unknown=self._get_exclude_unknown_settings(),
+            selected_paths=selected_paths,
+            collision_policy=getattr(
+                self,
+                "collision_policy",
+                defaults.DEFAULT_SETTINGS["collision_policy"],
+            ),
+        )
+
+    def _prepare_organize_run(self, mode, selected_paths=None):
+        """
+        Validate the run and confirm it with the user.
+
+        Returns the request to run, or None when the run should not start.
+        """
+        request = self._build_organize_request(mode, selected_paths)
+
+        try:
+            validate_request(request)
+        except OrganizeRunNotice as notice:
+            messagebox.showinfo("Info", str(notice))
+            return None
+        except OrganizeRunError as error:
+            messagebox.showerror("Error", str(error))
+            return None
+
+        # Confirm before creating anything, so declining leaves no empty destination.
+        if not self._confirm_move(request):
+            return None
+
+        try:
+            prepare_destination_root(request)
+        except OrganizeRunError as error:
+            messagebox.showerror("Error", str(error))
+            return None
+
+        return request
+
+    def _confirm_move(self, request):
+        """Ask the user to confirm a move run. Copy runs need no confirmation."""
+        if request.operation_mode != "move":
+            return True
+
+        if request.is_selection_run:
+            message = (
+                f"Moving {len(request.selected_paths)} files will remove them "
+                "from the source directory. Continue?"
+            )
+        else:
+            message = "Moving files will remove them from the source directory. Continue?"
+
+        return messagebox.askyesno("Confirm Move Operation", message)
+
+    def _log_organize_request(self, request):
+        """Log the settings this Organize run will use."""
+        logger.info(f"Source directory: {request.source_dir}")
+        logger.info(f"Output directory: {request.destination_dir}")
+        logger.info(f"Operation mode: {request.operation_mode}")
+        for media_type, template in request.templates.items():
             logger.info(f"Using {media_type} template: {template}")
-        logger.info(f"Selected extensions: {', '.join(selected_extensions)}")
+        logger.info(f"Selected extensions: {', '.join(request.selected_extensions)}")
 
-        # Start organization in a separate thread
-        self._run_organization_with_filters(selected_extensions, source_dir, output_dir, mode)
-
-    def _run_organization_with_filters(self, selected_extensions, source_dir, output_dir, mode):
-        """Run the organization process with the selected file extensions."""
+    def _begin_organize_run(self, request):
+        """Start an Organize run on a background thread."""
         self.run_state.begin()
+        self._update_ui_for_processing(True)
 
-        # Update UI
-        self.copy_button.config(state=tk.DISABLED)
-        self.move_button.config(state=tk.DISABLED)
-        self.stop_button.config(state=tk.NORMAL)
-        self.progress_var.set(0)
-        self.status_var.set("Starting...")
-        self.file_var.set("")
-        
-        # Clear preview
-        self._clear_preview()
-        
-        # Start organization in a separate thread
+        # A source scan run replaces whatever the preview last showed.
+        if not request.is_selection_run:
+            self._clear_preview()
+
         threading.Thread(
-            target=self._run_organization_process,
-            args=(selected_extensions, source_dir, output_dir, mode),
+            target=self._organize_run_thread,
+            args=(request,),
             daemon=True,
         ).start()
 
-    def _run_organization_process(self, selected_extensions, source_dir, output_dir, mode):
-        """Run the actual organization process in a separate thread."""
+    def _organize_run_thread(self, request):
+        """Run the Organize run off the UI thread and report back to it."""
         try:
-            output_path = Path(output_dir)
-            templates = self._get_template_settings()
-            exclude_unknown = self._get_exclude_unknown_settings()
-
-            scan_result = scan_source(
-                source_dir,
-                output_dir,
-                templates,
-                self.settings.supported_extensions,
-                selected_extensions,
-                exclude_unknown,
+            result = run_organize(
+                request,
+                collision_resolver=self._collision_resolver_for_policy(request.collision_policy),
+                should_stop=lambda: self.run_state.stop_requested,
+                on_progress=self._report_organize_progress,
             )
-            total_files = scan_result.total_count
-            processed = [0]
-
-            def on_each(plan, outcome):
-                if outcome.success:
-                    logger.info(
-                        f"{mode.capitalize()}d {plan.source_path} to {outcome.destination_path}"
-                    )
-                elif outcome.skipped:
-                    logger.info(
-                        f"Skipped {plan.source_path} due to path collision at "
-                        f"{output_path / plan.destination_path}"
-                    )
-                else:
-                    logger.error(f"Error processing file {plan.source_path}: {outcome.error}")
-
-                processed[0] += 1
-                current = processed[0]
-                self.root.after(
-                    0,
-                    lambda p=current, t=total_files, f=str(plan.source_path): self._update_progress(
-                        p, t, f
-                    ),
-                )
-
-            organize_result = self._execute_plans_with_collision_policy(
-                scan_result.plans,
-                output_path,
-                mode,
-                on_each,
-            )
-
-            if organize_result.stopped_early:
-                logger.info("Organization stopped by user")
-
-            self.run_state.files_processed = organize_result.successful
-            self.root.after(
-                0,
-                lambda p=organize_result.attempted, t=total_files: self._update_progress(
-                    p, t, "Complete"
-                ),
-            )
-            operation_name = "copy" if mode == "copy" else "move"
-            logger.info(
-                f"{operation_name.capitalize()} operation complete. "
-                f"Processed {organize_result.successful} files successfully out of "
-                f"{organize_result.attempted} attempted."
-            )
-
+            self.run_state.files_processed = result.successful
+            self.root.after(0, lambda r=result: self._organize_run_complete(request, r))
+        except OrganizeRunError as error:
+            logger.error(f"Cannot run organization: {error}")
+            self.root.after(0, lambda msg=str(error): self._organize_run_failed(msg))
         except Exception as e:
             logger.error(f"Error during organization: {e}")
+            message = str(e) or "Unknown error"
             self.root.after(
                 0,
-                lambda msg=str(e): messagebox.showerror(
-                    "Error", f"An error occurred during organization: {msg}"
+                lambda msg=message: self._organize_run_failed(
+                    f"An error occurred during organization: {msg}"
                 ),
             )
         finally:
             self.run_state.is_running = False
+
+    def _report_organize_progress(self, processed, total, current_file):
+        """Marshal progress from the run thread onto the UI thread."""
+        self.root.after(
+            0,
+            lambda p=processed, t=total, f=current_file: self._update_progress(p, t, f),
+        )
+
+    def _organize_run_complete(self, request, result):
+        """Handle Organize run completion on the UI thread."""
+        self._update_ui_for_processing(False)
+        self._update_progress(result.attempted, result.total_count, "Complete")
+
+        operation_past = "copied" if request.operation_mode == "copy" else "moved"
+        messagebox.showinfo(
+            "Complete",
+            f"Organization complete!\n\n{operation_past.capitalize()} {result.successful} files.",
+        )
+
+        # Moved files are gone from the source, so the preview list is stale.
+        if request.is_selection_run and request.operation_mode == "move" and result.successful:
+            self.root.after(500, self._generate_preview)
+
+    def _organize_run_failed(self, message):
+        """Handle a failed Organize run on the UI thread."""
+        self._update_ui_for_processing(False)
+        self.status_var.set("Organization failed")
+        messagebox.showerror("Error", message)
 
     def _stop_organization(self):
         """Stop the organization process."""
@@ -976,21 +958,6 @@ class ArchimediusGUI:
             self.run_state.stop()
             self.status_var.set("Stopping...")
             logger.info("Stopping organization process...")
-
-    def _organization_complete(self):
-        """Handle organization completion."""
-        self.copy_button.config(state=tk.NORMAL)
-        self.move_button.config(state=tk.NORMAL)
-        self.stop_button.config(state=tk.DISABLED)
-
-        operation_mode = getattr(self, "operation_mode", "copy")
-        operation_name = "copied" if operation_mode == "copy" else "moved"
-
-        # Show completion message
-        messagebox.showinfo(
-            "Complete",
-            f"Organization complete!\n\n{operation_name.capitalize()} {self.run_state.files_processed} files.",
-        )
 
     def _save_settings(self):
         """Save user settings to a configuration file."""
@@ -1106,140 +1073,22 @@ class ArchimediusGUI:
         self.preview_panel.deselect_all_files()
 
     def _process_selected_files(self, mode):
-        """Process only the selected files in the preview treeview."""
-        # Get the source and output directories
-        source_dir = self.source_entry.get().strip()
-        output_dir = self.output_entry.get().strip()
-        
-        if not source_dir or not output_dir:
-            messagebox.showerror("Error", "Please select both source and output directories.")
-            return
-            
-        if not os.path.exists(source_dir):
-            messagebox.showerror("Error", "Source directory does not exist.")
-            return
-            
-        # Create output directory if it doesn't exist
-        try:
-            os.makedirs(output_dir, exist_ok=True)
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to create output directory: {str(e)}")
-            return
-            
-        # Get selected source paths from the preview
+        """Start an Organize run over the files selected in the preview."""
         selected_paths = [
             data["full_path"]
             for data in self.preview_panel.preview_files.values()
             if data["selected"]
         ]
 
-        if not selected_paths:
-            messagebox.showinfo("Info", "No files selected for processing.")
+        request = self._prepare_organize_run(mode, selected_paths=selected_paths)
+        if request is None:
             return
-            
-        # Confirm move operation
-        if mode == "move" and not messagebox.askyesno(
-            "Confirm Move Operation",
-            f"Moving {len(selected_paths)} files will remove them from the source directory. Continue?",
-        ):
-            return
-            
+
         # Operation mode for this run
         self.operation_mode = mode
-        self.run_state.begin()
 
-        # Set flag to indicate we're processing selected files
-        self.processing_selected_files = True
+        self._begin_organize_run(request)
 
-        # Start processing in a separate thread
-        threading.Thread(
-            target=self._process_selected_files_thread,
-            args=(selected_paths, output_dir, mode),
-            daemon=True
-        ).start()
-
-    def _process_selected_files_thread(self, selected_paths, output_dir, mode):
-        """Process the selected files in a separate thread."""
-        try:
-            # Update UI
-            self.root.after(0, lambda: self._update_ui_for_processing(True))
-
-            output_path = Path(output_dir)
-            templates = self._get_template_settings()
-            exclude_unknown = self._get_exclude_unknown_settings()
-            plans = build_plans_for_paths(
-                selected_paths,
-                templates=templates,
-                supported_extensions=self.settings.supported_extensions,
-                exclude_unknown=exclude_unknown,
-            )
-
-            total_files = len(plans)
-            processed = [0]
-
-            def on_each(plan, outcome):
-                if outcome.success:
-                    logger.info(
-                        f"{mode.capitalize()}d {plan.source_path} to {outcome.destination_path}"
-                    )
-                elif outcome.skipped:
-                    logger.info(
-                        f"Skipped {plan.source_path} due to path collision at "
-                        f"{output_path / plan.destination_path}"
-                    )
-                else:
-                    logger.error(f"Error processing file {plan.source_path}: {outcome.error}")
-
-                processed[0] += 1
-                current = processed[0]
-                self.root.after(
-                    0,
-                    lambda p=current, t=total_files, f=str(plan.source_path): self._update_progress(
-                        p, t, f
-                    ),
-                )
-
-            organize_result = self._execute_plans_with_collision_policy(
-                plans,
-                output_path,
-                mode,
-                on_each,
-            )
-
-            if organize_result.stopped_early:
-                logger.info("Processing stopped by user")
-
-            successful = organize_result.successful
-            self.run_state.files_processed = successful
-            
-            # Complete
-            self.root.after(0, lambda: self._update_progress(processed[0], total_files, "Complete"))
-            operation_name = "copy" if mode == "copy" else "move"
-            logger.info(
-                f"{operation_name.capitalize()} operation complete. "
-                f"Processed {successful} files successfully out of {organize_result.attempted} attempted."
-            )
-            
-            # Show custom completion message
-            operation_past = "copied" if mode == "copy" else "moved"
-            self.root.after(0, lambda: messagebox.showinfo(
-                "Complete",
-                f"Operation complete!\n\n{operation_past.capitalize()} {successful} files successfully."
-            ))
-            
-            # Refresh the preview if files were moved to show current state
-            if mode == "move" and successful > 0:
-                self.root.after(500, self._generate_preview)
-            
-        except Exception as e:
-            logger.error(f"Error during processing: {e}")
-            error_msg = str(e) if str(e) else "Unknown error"
-            self.root.after(0, lambda msg=error_msg: messagebox.showerror("Error", f"An error occurred during processing: {msg}"))
-        finally:
-            self.run_state.is_running = False
-            # Update UI
-            self.root.after(0, lambda: self._update_ui_for_processing(False))
-            
     def _update_ui_for_processing(self, is_processing):
         """Update the UI elements for processing state."""
         if is_processing:
@@ -1280,7 +1129,6 @@ class ArchimediusGUI:
             self.extension_filter_panel.set_enabled(True)
             self.template_panel.set_enabled(True)
             self.preview_panel.set_processing_state(False)
-            self.processing_selected_files = False
 
     def _refresh_extension_filters(self):
         """Refresh the extension filter checkboxes based on current supported extensions."""

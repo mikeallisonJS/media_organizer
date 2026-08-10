@@ -31,6 +31,7 @@ The application follows a modular architecture with clear separation of concerns
 - **`metadata_extract/`**: Per-media-type metadata extraction and media type detection
 - **`destination_path.py`**: Template-based destination path resolution
 - **`organize_plan.py`**: Source scan, file planning, and organize execution
+- **`organize_run.py`**: Organize run orchestration — validate, plan, execute, report progress
 - **`run_state.py`**: Run-only flags (stop request, in-progress, processed count) for an active run
 - **`archimedius_gui.py`**: Entry point and GUI implementation
 
@@ -49,6 +50,20 @@ The `organize_plan` module is the shared pipeline for Preview and Organize run:
 - `iter_matching_files` / `scan_source` — recursive source scan with extension and destination rules
 - `build_file_plan` — metadata extraction plus destination path via `resolve_destination_path`
 - `execute_plans` — copy/move planned files with collision handling
+
+### organize_run
+
+The `organize_run` module owns a whole Organize run, so both GUI entry points
+("Copy/Move All" and "Copy/Move Selected") share one code path:
+
+- `OrganizeRequest` — the run's inputs, independent of the GUI. `selected_paths`
+  is `None` for a full source scan and a list of paths for a preview selection.
+- `validate_request` / `prepare_destination_root` — user-facing validation, raising
+  `OrganizeRunError` (or `OrganizeRunNotice` when nothing was selected)
+- `build_plans` — file plans from a source scan or from explicit paths
+- `run_organize` — validate, plan, execute under the run's collision policy, and
+  report progress; the collision resolver, stop predicate, and progress callback
+  are all injected, so the module is testable without launching the window
 
 ### Settings
 

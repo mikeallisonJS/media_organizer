@@ -187,7 +187,7 @@ def iter_matching_files(
     return matches
 
 
-def _default_metadata_extractor(
+def default_metadata_extractor(
     file_path: Path,
     supported_extensions: Mapping[str, Sequence[str]],
 ) -> tuple[str, dict]:
@@ -207,7 +207,7 @@ def build_file_plan(
     templates: Mapping[str, str],
     supported_extensions: Mapping[str, Sequence[str]],
     exclude_unknown: Mapping[str, bool],
-    metadata_extractor: MetadataExtractor = _default_metadata_extractor,
+    metadata_extractor: MetadataExtractor = default_metadata_extractor,
     path_resolver: DestinationPathResolver = resolve_destination_path,
 ) -> FilePlan:
     """Build a destination path plan for a single source file."""
@@ -237,7 +237,7 @@ def scan_source(
     exclude_unknown: Mapping[str, bool],
     *,
     max_files: int | None = None,
-    metadata_extractor: MetadataExtractor = _default_metadata_extractor,
+    metadata_extractor: MetadataExtractor = default_metadata_extractor,
     path_resolver: DestinationPathResolver = resolve_destination_path,
 ) -> ScanResult:
     """
@@ -326,7 +326,7 @@ def build_plans_for_paths(
     templates: Mapping[str, str],
     supported_extensions: Mapping[str, Sequence[str]],
     exclude_unknown: Mapping[str, bool],
-    metadata_extractor: MetadataExtractor = _default_metadata_extractor,
+    metadata_extractor: MetadataExtractor = default_metadata_extractor,
     path_resolver: DestinationPathResolver = resolve_destination_path,
 ) -> list[FilePlan]:
     """Build destination path plans for explicit source file paths."""
