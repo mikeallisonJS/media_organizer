@@ -13,7 +13,7 @@ from types import SimpleNamespace
 import pytest
 
 import defaults
-from organize_run import OrganizeRequest
+from organize_run import OrganizeRequest, OrganizeRunResult
 
 
 # The ``gui`` fixture is provided by tests/conftest.py.
@@ -168,6 +168,40 @@ def test_request_carries_the_configured_collision_policy(wired):
 
     (request,) = wired.started
     assert request.collision_policy == defaults.COLLISION_POLICY_RENAME
+
+
+def finish_run(wired, monkeypatch, *, stopped_early, mode="copy", successful=0):
+    """Drive the completion handler and return the (title, message) dialog shown."""
+    shown = []
+    monkeypatch.setattr(
+        "archimedius_gui.messagebox.showinfo",
+        lambda title, message, **kwargs: shown.append((title, message)),
+    )
+    outcomes = [SimpleNamespace(success=True)] * successful
+    result = OrganizeRunResult(outcomes=outcomes, total_count=3, stopped_early=stopped_early)
+
+    wired.gui._organize_run_complete(wired.gui._build_organize_request(mode), result)
+
+    return shown[0]
+
+
+def test_finished_run_reports_completion(wired, monkeypatch):
+    title, message = finish_run(wired, monkeypatch, stopped_early=False, successful=3)
+
+    assert title == "Complete"
+    assert "Organization complete!" in message
+    assert "Copied 3 files" in message
+
+
+def test_stopped_run_is_not_reported_as_complete(wired, monkeypatch):
+    """Stop ends a run early, so its partial counts must not read as a finished run."""
+    title, message = finish_run(wired, monkeypatch, stopped_early=True, successful=1)
+
+    assert title == "Stopped"
+    assert "Organization complete!" not in message
+    assert "Organization stopped." in message
+    assert "Copied 1 files" in message
+    assert wired.gui.file_var.get() == "Organization stopped."
 
 
 def test_prompt_policy_supplies_a_collision_resolver(wired):

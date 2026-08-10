@@ -932,14 +932,19 @@ class ArchimediusGUI:
         )
 
     def _organize_run_complete(self, request, result):
-        """Handle Organize run completion on the UI thread."""
+        """Handle the end of an Organize run on the UI thread."""
         self._update_ui_for_processing(False)
         self._update_progress(result.attempted, result.total_count, "Complete")
 
+        # A stopped run finished early: the counts are partial, not a full result.
+        headline = "Organization stopped." if result.stopped_early else "Organization complete!"
+        if result.stopped_early:
+            self.file_var.set(headline)
+
         operation_past = "copied" if request.operation_mode == "copy" else "moved"
         messagebox.showinfo(
-            "Complete",
-            f"Organization complete!\n\n{operation_past.capitalize()} {result.successful} files.",
+            "Stopped" if result.stopped_early else "Complete",
+            f"{headline}\n\n{operation_past.capitalize()} {result.successful} files.",
         )
 
         # Moved files are gone from the source, so the preview list is stale.
