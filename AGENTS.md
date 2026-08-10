@@ -18,4 +18,4 @@ Single-context layout: `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/
 
 ### PR review feedback
 
-When addressing review comments on an open PR, use `.agents/skills/handle-pr-review/SKILL.md`
+When addressing review comments on an open PR, use `.claude/skills/handle-pr-review/SKILL.md`
