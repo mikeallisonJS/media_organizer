@@ -8,6 +8,7 @@ def test_imports():
     try:
         import run_state
         import organize_plan
+        import organize_run
         import defaults
         import log_window
         import settings
